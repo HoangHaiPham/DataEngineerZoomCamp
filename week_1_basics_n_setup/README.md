@@ -150,6 +150,85 @@ CREATE TABLE "yellow_taxi_data" (
 )
 ```
 
+# [DE Zoomcamp 1.2.3 - Connecting pgAdmin and Postgres](https://www.youtube.com/watch?v=hCAIVe9N0ow&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=7)
+
+#### pgAdmin
+
+- It's not convenient to use pgcli for data exploration and querying
+- pgAdmin - the standard graphical tool for postgres for that https://www.pgadmin.org/download/pgadmin-4-container/
+- Can run with docker
+- Docker container can't access the postgres container => need to link them
+
+```
+docker run -it \
+  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+  -e PGADMIN_DEFAULT_PASSWORD="root" \
+  -p 8080:80 \
+  dpage/pgadmin4
+```
+
+- `-e` flag: environment variables for logging into the interface.
+- `-p` flag: port mapping, map port 8080 on localhost to port 80 on the container.
+- `dpage/pgadmin4` name of the image.
+
+Load pgAdmin on a web browser by url `localhost:8080` with the same email and password used for container.
+
+![pgAdmin-homepage](./images/pgadmin-homepage.png)
+
+![pgAdmin-register-server-general](./images/register-server-general.png)
+
+![pgAdmin-register-server-connection](./images/register-server-connection.png)
+
+<span style="color: red"> Unable to connect to server.</span> Reason for that:
+
+- We are running pgAdmin inside a container and Postgres inside another container.
+- That means the pgAdmin cannot find the Postgres.
+
+**How can we connect those two containers???**
+
+- We need to link the Postgres and the pgAdmin together by using `network`.
+- Put those two containers in the same `network` => two containers can find each other.
+
+#### Create docker network.
+
+```
+docker network create <network-name>
+EX: docker network create pg-network
+```
+
+#### Postgres for the container running with network.
+
+```
+docker run -it \
+  -e POSTGRES_USER="root" \
+  -e POSTGRES_PASSWORD="root" \
+  -e POSTGRES_DB="ny_taxi" \
+  -v $(pwd)/data/ny_taxi_postgres_data:/var/lib/postgresql/data \
+  -p 5432:5432 \
+  --network=pg-network \
+  --name pg-database \
+  postgres:13
+```
+
+#### pgAdmin for the container running with network.
+
+```
+docker run -it \
+  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+  -e PGADMIN_DEFAULT_PASSWORD="root" \
+  -p 8080:80 \
+  --network=pg-network \
+  --name pgadmin \
+  dpage/pgadmin4
+```
+
+- `--network`: name of docker network.
+- `--name`: name for other containers to find this Postgres.
+
+![pgAdmin-register-server-general](./images/register-server-general-2.png)
+
+![pgAdmin-register-server-connection](./images/register-server-connection-2.png)
+
 # Google Cloud Platform
 
 ### [DE Zoomcamp 1.1.1 - Introduction to Google Cloud Platform](https://www.youtube.com/watch?v=18jIzE41fJ4&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=3)
