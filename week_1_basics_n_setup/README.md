@@ -67,7 +67,7 @@ Example folder "ny_taxi_postgres_data".
 
 #### Run this command to configurate Postgres for the container.
 
-```
+```bash
 docker run -it \
   -e POSTGRES_USER="root" \
   -e POSTGRES_PASSWORD="root" \
@@ -159,7 +159,7 @@ CREATE TABLE "yellow_taxi_data" (
 - Can run with docker
 - Docker container can't access the postgres container => need to link them
 
-```
+```bash
 docker run -it \
   -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
   -e PGADMIN_DEFAULT_PASSWORD="root" \
@@ -198,7 +198,7 @@ EX: docker network create pg-network
 
 #### Postgres for the container running with network.
 
-```
+```bash
 docker run -it \
   -e POSTGRES_USER="root" \
   -e POSTGRES_PASSWORD="root" \
@@ -212,7 +212,7 @@ docker run -it \
 
 #### pgAdmin for the container running with network.
 
-```
+```bash
 docker run -it \
   -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
   -e PGADMIN_DEFAULT_PASSWORD="root" \
@@ -228,6 +228,118 @@ docker run -it \
 ![pgAdmin-register-server-general](./images/register-server-general-2.png)
 
 ![pgAdmin-register-server-connection](./images/register-server-connection-2.png)
+
+# [DE Zoomcamp 1.2.4 - Dockerizing the Ingestion Script](https://www.youtube.com/watch?v=B1WwATwf-vY&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=9)
+
+#### Converting the Jupyter notebook to a Python script
+
+> jupyter nbconvert --to=script upload-data.ipynb
+
+#### Parametrizing the script with argparse
+
+Using `argparse` to handle the following command line arguments:
+
+- Username
+- Password
+- Host
+- Port
+- Database name
+- Table name
+- URL for the CSV file
+
+Test python the script, need to drop the table yellow_taxi_data previously created.
+
+```bash
+python3 ingest_data.py \
+  --user=root \
+  --password=root \
+  --host=localhost \
+  --port=5432 \
+  --db=ny_taxi \
+  --table_name=yellow_taxi_trips \
+  --url="https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz"
+```
+
+#### Dockerizing the ingestion script
+
+Let's modify the Dockerfile before to include ingest_data.py script and create a new image
+
+```bash
+# based image python ver 3.9
+FROM python:3.9
+
+# Install wget to download the csv file
+RUN apt-get install wget
+
+# Run command to install pandas inside the container
+# and it will create new image based on that
+# psycopg2 is a postgres db adapter for python: sqlalchemy needs it
+RUN pip install pandas sqlalchemy psycopg2
+
+# Specify the working directory, which is the location in the container
+# where the file will be copied to
+WORKDIR /app
+
+# Copy this file from current working directory to the docker image
+# 1st argument: the name in the source on host machine
+# 2nd argument: the name on the destination
+COPY ingest_data.py ingest_data.py
+
+# Overwrite entrypoint to get bash prompt (or execute python file)
+# ENTRYPOINT ["bash"]
+ENTRYPOINT ["python", "ingest_data.py"]
+```
+
+Build docker image
+
+> docker build -t taxi_ingest:v001 .
+
+Run with docker command
+
+```bash
+docker run -it \
+  --network=pg-network \
+  taxi_ingest:v001 \
+  --user=root \
+  --password=root \
+  --host=pg-database \
+  --port=5432 \
+  --db=ny_taxi \
+  --table_name=yellow_taxi_trips \
+  --url="https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz"
+```
+
+- `-it` to stop the docker run in terminal. Otherwise it will not be interactive. \
+- `host` if use `localhost` when running in docker, localhost itself has no postgresql => will be failed. Use pg-database to connect with Postgres database in the network.
+- Need to run within `network`, which should be specified before image name.
+- Before image name, parameters are for Docker. After image name, parameters are for application.
+
+#### Trick to make docker run faster
+
+Run http server with python to list all the files in the current directory
+
+> python3 -m http.server
+
+Check for IP address
+
+> ifconfig / ipconfig
+
+=> let docker download the data file `yellow_tripdata_2021-01.csv` from your IP address. By setting the URL to the local path of the file.
+
+Change to `os.system(f"wget {url} -O {csv_name}")` in ingest_data.py
+
+```bash
+docker run -it \
+  --network=pg-network \
+  taxi_ingest:v001 \
+  --user=root \
+  --password=root \
+  --host=pg-database \
+  --port=5432 \
+  --db=ny_taxi \
+  --table_name=yellow_taxi_trips \
+  --url="http://192.168.1.42:8000/yellow_tripdata_2021-01.csv"
+```
 
 # Google Cloud Platform
 
