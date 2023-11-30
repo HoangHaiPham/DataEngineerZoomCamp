@@ -309,7 +309,7 @@ docker run -it \
   --url="https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz"
 ```
 
-- `-it` to stop the docker run in terminal. Otherwise it will not be interactive. \
+- `-it` to stop the docker run in terminal. Otherwise it will not be interactive.
 - `host` if use `localhost` when running in docker, localhost itself has no postgresql => will be failed. Use pg-database to connect with Postgres database in the network.
 - Need to run within `network`, which should be specified before image name.
 - Before image name, parameters are for Docker. After image name, parameters are for application.
@@ -340,6 +340,63 @@ docker run -it \
   --table_name=yellow_taxi_trips \
   --url="http://192.168.1.42:8000/yellow_tripdata_2021-01.csv"
 ```
+
+# [DE Zoomcamp 1.2.5 - Running Postgres and pgAdmin with Docker-Compose](https://www.youtube.com/watch?v=hKI6PkPhpa0&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=9)
+
+- Why do we need Docker-compose?
+- Docker-compose YAML file
+- Running multiple containers with docker-compose up
+
+`docker-compose`: put configuration from multiple containers using a single file => don't need to run multiple complex docker run commands separately.
+
+Here's the docker-compose.yaml file for running the Postgres and pgAdmin containers:
+
+```yaml
+services:
+  pg-database:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=ny_taxi
+    volumes:
+      - "../../../data/ny_taxi_postgres_data:/var/lib/postgresql/data:rw"
+    ports:
+      - "5432:5432"
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    volumes:
+      - "../../../data/pgadmin_data:/var/lib/pgadmin"
+    ports:
+      - "8080:80"
+```
+
+- `pgadmin` is able to access postgres `pg-database` since we already defined them in the `docker-compose` file. \
+  => They automatically become a part of the same network => we don't need to create a `network`.
+- For `volumes` in docker-compose, don't need to write the full path. `rw` stands for `read-write`, which is the default one.
+- Since the settings for pgAdmin were stored within another container and we have killed the that one => we have to re-create the connection by following the steps [here](#pgadmin-for-the-container-running-with-network).
+
+  - Added a volume for pgAdmin to save its settings => don't have to keep re-creating the connection to Postgres every time re-run the container.
+  - Volumes is a way of mapping folder that we have on our host machine to a folder in the container.
+  - Remember docker doesn't keep the state, therefore, next time when docker is run, the state will be lost, results in the data is also lost => In order to keep data => mapping folder on host machine to a folder in the container is necessary => this is called MOUNTING.
+  - Create a `pgadmin_data` folder in `data` work folder (should be the same location with `ny_taxi_postgres_data`).
+  - Run docker-compose for the first time & the configuration for connecting to Postgres will be stored in `pgadmin_data`.
+
+Running docker-compose in the same directory where docker-compose.yaml \
+**Make sure all previous containers are stopped.**
+
+> docker-compose up
+
+Running docker-compose in `detached` mode => can still do commands with the current terminal.
+
+> docker-compose up -d
+
+Stopping docker-compose
+
+> Ctrl + C or docker-compose down
 
 # Google Cloud Platform
 
