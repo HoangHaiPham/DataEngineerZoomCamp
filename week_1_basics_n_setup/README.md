@@ -398,6 +398,45 @@ Stopping docker-compose
 
 > Ctrl + C or docker-compose down
 
+# [DE Zoomcamp 1.2.6 - SQL Refreshser](https://www.youtube.com/watch?v=QEcps_iskgg&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=13)
+
+- Adding the Zones table
+  - The Zones table data can be downloaded from [here](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page).
+  - Upload this data to ny_taxi database.
+- Inner joins
+- Basic data quality checks
+- Left, Right and Outer joins
+- Group by
+
+#### Optional: If having problems with docker networking,check [DE Zoomcamp 1.4.2 - Port Mapping and Networks in Docker (Bonus)](https://www.youtube.com/watch?v=tOr4hTsHOzU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb)
+
+- Docker networks
+- Port forwarding to the host environment
+- Communicating between containers in the network
+- `.dockerignore` file
+
+#### Optional: If want to do the steps from `DE Zoomcamp 1.2.2 - Investing NY Taxi Data to Postgres` to `DE Zoomcamp 1.2.5 - Running Postgres and pgAdmin with Docker-Compose` with Windows Subsystem Linux => check [Docker Module Walk-Through on WSL](https://www.youtube.com/watch?v=Mv4zFm2AwzQ)
+
+### SQL commands can be categorized into the following categories:
+
+- DDL: Data Definition Language.
+  - Define the database schema (create, modify, destroy)
+  - CREATE, DROP, ALTER, TRUNCATE, COMMENT, RENAME
+- DQL: Data Query Language.
+  - Perform queries on the data within schema objects. Get data from the database and impose order upon it.
+  - SELECT
+- DML: Data Manipulation Language.
+  - Manipulates data present in the database.
+  - INSERT, UPDATE, DELETE, LOCK...
+- DCL: Data Control Language.
+  - Rights, permissions and other controls of the database system.
+  - Usually grouped with DML commands.
+  - GRANT, REVOKE
+- TCL: Transaction Control Language.
+  - Transactions within the database.
+  - Not a universally considered category.
+  - COMMIT, ROLLBACK, SAVEPOINT, SET TRANSACTION
+
 # Google Cloud Platform
 
 ### [DE Zoomcamp 1.1.1 - Introduction to Google Cloud Platform](https://www.youtube.com/watch?v=18jIzE41fJ4&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=3)
