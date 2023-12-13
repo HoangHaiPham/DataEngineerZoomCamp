@@ -474,15 +474,19 @@ For this course, use a free version (upto 300 Euro credits).
 1. Create an account with Google email ID.
 
 2. Setup first `project`, eg. "dtc-de" and note down the "Project ID". This "Project ID" must be unique to all of GCP. Leave the organization as No organization.
-   ![gcp-create-project](./images/gcp-create-project.png)
+
+![gcp-create-project](./images/gcp-create-project.png)
 
 3. Setup `service account & authentication` for project, download auth-keys (json).
 
    - Go to `IAM & Admin` -> `Service Accounts` -> `Create Service Account`.
+
      ![gcp-create-service-account-step1](./images/gcp-create-service-account-step1.png)
+
    - Grant the `Viewer` role (Basic > Viewer) to the service account and click on Continue.
    - There is no need to grant users access to this service account at the moment. Click on Done.
    - when service accounts is generated. click on the `Actions` -> `Manage Keys` -> `Add Key` -> `Create new key` -> `JSON` -> A file access key will be downloaded.
+
      ![gcp-manage-keys](./images/gcp-manage-keys.png)
 
 4. Download SDK for local setup. Google SDK is a CLI tool, which is used to interact with cloud services. Download [GCP SDK](https://cloud.google.com/sdk/docs/install-sdk).
