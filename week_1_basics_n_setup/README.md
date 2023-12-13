@@ -475,7 +475,7 @@ For this course, use a free version (upto 300 Euro credits).
 
 2. Setup first `project`, eg. "dtc-de" and note down the "Project ID". This "Project ID" must be unique to all of GCP. Leave the organization as No organization.
 
-![gcp-create-project](./images/gcp-create-project.png)
+   ![gcp-create-project](./images/gcp-create-project.png)
 
 3. Setup `service account & authentication` for project, download auth-keys (json).
 
