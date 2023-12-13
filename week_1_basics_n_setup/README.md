@@ -437,10 +437,99 @@ Stopping docker-compose
   - Not a universally considered category.
   - COMMIT, ROLLBACK, SAVEPOINT, SET TRANSACTION
 
-# Google Cloud Platform
+# [DE Zoomcamp 1.3.1 - Introduction to Terraform Concepts & GCP Pre-Requisites](https://www.youtube.com/watch?v=Hajwnmj0xfQ&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=11)
 
-### [DE Zoomcamp 1.1.1 - Introduction to Google Cloud Platform](https://www.youtube.com/watch?v=18jIzE41fJ4&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=3)
+## Terraform Overview
 
-- Cloud computing services offered by google
-- Includes a range of hosted services for compute, storage and application development that run on Google hardware
-- Same hardware on which google runs its service
+Installation: https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli
+
+1. What is Terraform?
+
+- Open-source tool used for provisionning and infrastructure resources.
+- Supports DevOps best practices for change management.
+- Managing configuration files in source control to manintain an ideal provisioning state for testing and production environments.
+
+2. What is Iac?
+
+- Infrastructure-as-Code.
+- Build, change, and manage your infrastructure in a safe, consistent, and repeatable way by defining resource configurations that you can version, reuse, and share.
+
+3. Some advantages
+
+- Infrastructure lifecycle management.
+- Version control commits.
+- Very useful for stack-based deployments, and with cloud providers such as AWS, GCP, Azure, K8S, ...
+- State-based approach to track resource changes throughout deployments.
+
+## Google Cloud Platform (GCP)
+
+#### [DE Zoomcamp 1.1.1 - Introduction to Google Cloud Platform](https://www.youtube.com/watch?v=18jIzE41fJ4&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=3)
+
+- Cloud computing services offered by google.
+- Includes a range of hosted services for compute, storage and application development that run on Google hardware.
+- Same hardware on which google runs its service.
+
+For this course, use a free version (upto 300 Euro credits).
+
+1. Create an account with Google email ID.
+
+2. Setup first `project`, eg. "dtc-de" and note down the "Project ID". This "Project ID" must be unique to all of GCP. Leave the organization as No organization.
+   ![gcp-create-project](./images/gcp-create-project.png)
+
+3. Setup `service account & authentication` for project, download auth-keys (json).
+
+   - Go to `IAM & Admin` -> `Service Accounts` -> `Create Service Account`.
+     ![gcp-create-service-account-step1](./images/gcp-create-service-account-step1.png)
+   - Grant the `Viewer` role (Basic > Viewer) to the service account and click on Continue.
+   - There is no need to grant users access to this service account at the moment. Click on Done.
+   - when service accounts is generated. click on the `Actions` -> `Manage Keys` -> `Add Key` -> `Create new key` -> `JSON` -> A file access key will be downloaded.
+     ![gcp-manage-keys](./images/gcp-manage-keys.png)
+
+4. Download SDK for local setup. Google SDK is a CLI tool, which is used to interact with cloud services. Download [GCP SDK](https://cloud.google.com/sdk/docs/install-sdk).
+
+5. Set environment variable to point to your downloaded GCP auth-keys:
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="<payh/to/your/service-account-authkeys>.json"
+
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json"
+
+# Check gcloud version
+gcloud -v
+
+# Refresh token, and verify authentication
+gcloud auth application-default login
+```
+
+## Create infrastructure for project with Terraform
+
+### Project infrastructure modules in GCP
+
+- Google Cloud Storage (GCS): Data Lake.
+- BigQuery: Data Warehouse.
+
+### Setup Access
+
+1. `IAM Roles` for Service Account" \
+   Storage Admin, Storage Object Admin, BigQuery Admin, Viewer.
+
+   - Go to `IAM & Admin` -> `IAM` in GCP dashboard.
+   - Click `Edit` for the newly selected Service Account.
+   - Add following roles -> Save:
+     - Storage Admin: for creating and managing buckets.
+     - Storage Object Admin: for creating and managing objects within the buckets.
+     - BigQuery Admin: for managing BigQuery data.
+     - Viewer
+
+2. Enable `IAM` and `IAMCredentials` APIs for project. This is necessary so that Terraform can interact with GCP. Make sure that select the correct `Project.`
+
+   - https://console.cloud.google.com/apis/library/iam.googleapis.com
+   - https://console.cloud.google.com/apis/library/iamcredentials.googleapis.com
+
+3. Ensure `GOOGLE_APPLICATION_CREDENTIALS` env-var is set.
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="<payh/to/your/service-account-authkeys>.json"
+
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json"
+```
