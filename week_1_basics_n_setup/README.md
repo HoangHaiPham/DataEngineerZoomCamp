@@ -597,3 +597,13 @@ With a configuration ready, there are several commands that must be followed:
 - `terraform plan`: creates a preview of the changes to be applied against a remote state, allowing you to review the changes (old resources deleted, new resource creates, existing resource updated) before applying them => Enter `project ID` after running this command.
 - `terraform apply`: applies the changes to the infrastructure => Enter `project ID` > `yes` after running this command.
 - `terraform destroy`: removes your stack from the infrastructure to avoid cost.
+
+# Extra content
+
+Setting up a development environment in a Google Cloud VM
+If you cannot set up a local development environment, you may use part of the $300 credits of GCP in creating a Cloud VM and access to it via SSH to set up the environment there.
+
+Follow the instructions [DE Zoomcamp 1.4.1 - Setting up the Environment on Google Cloud (Cloud VM + SSH access)](https://www.youtube.com/watch?v=ae-CV2KfoN0&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=16)
+
+Port mapping and networks in Docker
+If you're having issues with Docker and networking (especially if you already have Postgres running locally in your host computer), a videoguide is also available. [DE Zoomcamp 1.4.2 - Port Mapping and Networks in Docker (Bonus)](https://www.youtube.com/watch?v=tOr4hTsHOzU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=17)
