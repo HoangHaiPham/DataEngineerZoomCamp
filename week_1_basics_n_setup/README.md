@@ -456,6 +456,10 @@ Installation: https://developer.hashicorp.com/terraform/tutorials/aws-get-starte
 
 3. Some advantages
 
+- Simplicity in keeping track of infrastructure.
+- Easier collaboration.
+- Reproducibility.
+- Ensure resources are removed.
 - Infrastructure lifecycle management.
 - Version control commits.
 - Very useful for stack-based deployments, and with cloud providers such as AWS, GCP, Azure, K8S, ...
@@ -537,3 +541,59 @@ export GOOGLE_APPLICATION_CREDENTIALS="<payh/to/your/service-account-authkeys>.j
 
 export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json"
 ```
+
+# [DE Zoomcamp 1.3.2 - Creating GCP Infrastructure with Terraform](https://www.youtube.com/watch?v=dNkEgO-CExg&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=13)
+
+Terraform loads all files ending in .tf or .tf.json in the working directory. A Terraform configuration must be in its own working directory; you cannot have 2 or more separate configurations in the same folder.
+
+The [Terraform tutorial with GCP](https://developer.hashicorp.com/terraform/tutorials/gcp-get-started/google-cloud-platform-build) shows a basic `main.tf` file written in Terraform language with all of the necesary info to describe basic infrastructure.
+
+- Terraform divides information into blocks with {}.
+
+- There are 3 main blocks: terraform, provider and resource. There must only be a single terraform block but there may be multiple provider and resource blocks.
+
+- The `terraform` block contains settings:
+
+  - The `required_providers` sub-block specifies the providers required by the configuration (`google` in the example).
+  - The provider (google) is a plugin that Terraform uses to create and manage resources. Each provider needs a source in order to install the right plugin.
+  - By default the Hashicorp repository is used, in a similar way to Docker images. `hashicorp/google` is short for registry.terraform.io/hashicorp/google .
+  - Optionally, a provider can have an enforced `version`. If this is not specified the latest version will be used by default.
+
+- The `provider` block configures a specific provider.
+
+  - The contents of a provider block are provider-specific. The contents in this example are meant for GCP but may be different for AWS or Azure.
+
+- The `resource` blocks define the actual components of infrastructure.
+
+  > resource "type" "name"
+
+  - Resource type:
+
+    - The first prefix of the resource type maps to the name of the provider. For example, the resource type `google_storage_bucket` has the prefix `google` and thus maps to the provider google.
+    - The resource types are defined in the Terraform documentation and refer to resources that cloud providers offer. Example [google_storage_bucket](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/storage_bucket).
+
+  - Resource name: the internal name that is used in Terraform configurations to refer to each resource and have no impact on the actual infrastructure.
+
+  - The contents of a resource block are specific to the resource type. Check the [Terraform docs](https://registry.terraform.io/browse/providers) to see a list of resource types by provider.
+
+Variables must be accessed with the keyword var. and then the name of the variable. Those variables are stored in `variables.tf` file.
+
+- `Local` values block types behave more like constants.
+
+  - Local values may be grouped in one or more blocks of type locals. Local values are often grouped according to usage.
+  - Local values are simpler to declare than input variables because they are only a key-value pair.
+  - Local values must be accessed with the word `local`.
+    > region = local.region
+
+- Select the region within the location where you're living. And should be the same region for all resouces.
+
+- If different regions are selected, it will cost more money when those regions communicate with each other.
+
+With a configuration ready, there are several commands that must be followed:
+
+- `terraform init`: initialize & install the necessary providers/plugins.
+- `terraform fmt` (optional): formats your configuration files so that the format is consistent.
+- `terraform validate` (optional): returns a success message if the configuration is valid and no errors are apparent.
+- `terraform plan`: creates a preview of the changes to be applied against a remote state, allowing you to review the changes (old resources deleted, new resource creates, existing resource updated) before applying them => Enter `project ID` after running this command.
+- `terraform apply`: applies the changes to the infrastructure => Enter `project ID` > `yes` after running this command.
+- `terraform destroy`: removes your stack from the infrastructure to avoid cost.
