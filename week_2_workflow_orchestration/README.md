@@ -241,7 +241,7 @@ You may now skip to the [Execution section](#execution) to deploy Airflow, or co
    docker-compose up -d
    ```
 4. In another terminal, run docker-compose ps to see which containers are up & running (there should be 7, matching with the services in your docker-compose file).
-5. You may now access the Airflow GUI by browsing to `localhost:8080`. Username and password are both `airflow` .
+5. You may now access the Airflow GUI by browsing to `localhost:8080` or `0.0.0.0:8080`. Username and password are both `airflow` .
    > **_IMPORTANT_**: this is **_NOT_** a production-ready setup! The username and password for Airflow have not been modified in any way; you can find them by searching for `_AIRFLOW_WWW_USER_USERNAME` and `_AIRFLOW_WWW_USER_PASSWORD` inside the `docker-compose.yaml` file.
 6. On finishing your run or to shut down the container/s:
 
