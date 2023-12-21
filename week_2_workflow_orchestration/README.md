@@ -121,8 +121,6 @@ Ref: https://airflow.apache.org/docs/apache-airflow/stable/concepts/overview.htm
 
 All these services allow you to run Airflow with CeleryExecutor.
 
-If you want to run a lighter version of Airflow with fewer services, check this [video](https://www.youtube.com/watch?v=A1p5LQ0zzaQ&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb). It reduces the laptop memory usage!
-
 ### Airflow will create a folder Project Structure when running:
 
 - `./dags` - DAG_FOLDER for DAG files (use ./dags_local for the local ingestion DAG).
@@ -214,7 +212,7 @@ Please follow these instructions for deploying the "full" Airflow with Docker. I
   ```
 - Change the `AIRFLOW__CORE__LOAD_EXAMPLES` value to `'false'`. This will prevent Airflow from populating its interface with DAG examples.
 
-- You may find a modified docker-compose.yaml file in this [link](./airflow/docker-compose.yaml).
+- You may find a modified [docker-compose.yaml file here](./airflow/extras/docker-compose_full.yaml).
 
 6. Download files:
 
@@ -222,9 +220,7 @@ Please follow these instructions for deploying the "full" Airflow with Docker. I
 - [`data_ingestion_local.py`](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/cohorts/2022/week_2_data_ingestion/airflow/dags_local/data_ingestion_local.py) & [`ingest_script.py`](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/cohorts/2022/week_2_data_ingestion/airflow/dags_local/ingest_script.py) into `dags_local`.
 
 7. Additional notes:
-   The YAML file uses CeleryExecutor as its executor type, which means that tasks will be pushed to workers (external Docker containers) rather than running them locally (as regular processes). You can change this setting by modifying the `AIRFLOW__CORE__EXECUTOR` environment variable under the x-airflow-common environment definition.
-
-You may now skip to the [Execution section](#execution) to deploy Airflow, or continue reading to modify your `docker-compose.yaml` file further for a less resource-intensive Airflow deployment.
+   The YAML file uses CeleryExecutor as its executor type, which means that tasks will be pushed to workers (external Docker containers) rather than running them locally (as regular processes). You can change this setting by modifying the `AIRFLOW__CORE__EXECUTOR` environment variable to `LocalExecutor` under the x-airflow-common environment definition.
 
 ### Execution
 
@@ -242,7 +238,13 @@ You may now skip to the [Execution section](#execution) to deploy Airflow, or co
    ```
 4. In another terminal, run docker-compose ps to see which containers are up & running (there should be 7, matching with the services in your docker-compose file).
 5. You may now access the Airflow GUI by browsing to `localhost:8080` or `0.0.0.0:8080`. Username and password are both `airflow` .
+
    > **_IMPORTANT_**: this is **_NOT_** a production-ready setup! The username and password for Airflow have not been modified in any way; you can find them by searching for `_AIRFLOW_WWW_USER_USERNAME` and `_AIRFLOW_WWW_USER_PASSWORD` inside the `docker-compose.yaml` file.
+
+   To access bash prompt
+
+   > docker exec -it `docker-image-id` bash
+
 6. On finishing your run or to shut down the container/s:
 
    > docker-compose down
@@ -254,3 +256,23 @@ You may now skip to the [Execution section](#execution) to deploy Airflow, or co
    or
 
    > docker-compose down --volumes --remove-orphans
+
+# [DE Zoomcamp 2.3.4 - Optional: Lightweight Local Setup for Airflow](https://www.youtube.com/watch?v=A1p5LQ0zzaQ&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb)
+
+The current docker-compose.yaml file we've generated will deploy multiple containers which will require lots of resources. In order to reduces the laptop memory usage, try the setup of a lighter version of Airflow with fewer services.
+
+1. Remove the `redis` queue, `airflow-worker`, `airflow-triggerer` and `flower` services from docker-compose.yaml file.
+2. Changed `AIRFLOW__CORE__EXECUTOR` from `CeleryExecutor` to `LocalExecutor`.
+3. At the end of the `x-airflow-common definition`, within the depends-on block, remove these 2 lines:
+
+   ```yaml
+   redis:
+     condition: service_healthy
+   ```
+
+4. Comment out the `AIRFLOW__CELERY__RESULT_BACKEND` and `AIRFLOW__CELERY__BROKER_URL` environment variables.
+5. Stop all containers and cleaned everything with
+   > docker-compose down --volumes --rmi all
+6. [Execution](#execution) to deploy Airflow.
+
+### You may find a modified docker-compose.yaml for lighter file in this [link](./airflow/extras/docker-compose_light.yaml).
