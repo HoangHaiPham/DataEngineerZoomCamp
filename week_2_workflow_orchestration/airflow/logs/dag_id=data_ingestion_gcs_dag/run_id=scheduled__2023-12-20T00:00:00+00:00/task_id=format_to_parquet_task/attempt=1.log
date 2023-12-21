@@ -1,0 +1,14 @@
+[2023-12-21T16:07:32.602+0000] {taskinstance.py:1957} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: data_ingestion_gcs_dag.format_to_parquet_task scheduled__2023-12-20T00:00:00+00:00 [queued]>
+[2023-12-21T16:07:32.611+0000] {taskinstance.py:1957} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: data_ingestion_gcs_dag.format_to_parquet_task scheduled__2023-12-20T00:00:00+00:00 [queued]>
+[2023-12-21T16:07:32.612+0000] {taskinstance.py:2171} INFO - Starting attempt 1 of 2
+[2023-12-21T16:07:32.624+0000] {taskinstance.py:2192} INFO - Executing <Task(PythonOperator): format_to_parquet_task> on 2023-12-20 00:00:00+00:00
+[2023-12-21T16:07:32.630+0000] {standard_task_runner.py:60} INFO - Started process 243 to run task
+[2023-12-21T16:07:32.633+0000] {standard_task_runner.py:87} INFO - Running: ['***', 'tasks', 'run', 'data_ingestion_gcs_dag', 'format_to_parquet_task', 'scheduled__2023-12-20T00:00:00+00:00', '--job-id', '3', '--raw', '--subdir', 'DAGS_FOLDER/data_ingestion_gcs_dag.py', '--cfg-path', '/tmp/tmpelprel_a']
+[2023-12-21T16:07:32.636+0000] {standard_task_runner.py:88} INFO - Job 3: Subtask format_to_parquet_task
+[2023-12-21T16:07:32.654+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.8/site-packages/***/settings.py:195 DeprecationWarning: The sql_alchemy_conn option in [core] has been moved to the sql_alchemy_conn option in [database] - the old setting has been used, but please update your config.
+[2023-12-21T16:07:32.698+0000] {task_command.py:423} INFO - Running <TaskInstance: data_ingestion_gcs_dag.format_to_parquet_task scheduled__2023-12-20T00:00:00+00:00 [running]> on host 7b9e1be6f051
+[2023-12-21T16:07:32.779+0000] {taskinstance.py:2481} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='data_ingestion_gcs_dag' AIRFLOW_CTX_TASK_ID='format_to_parquet_task' AIRFLOW_CTX_EXECUTION_DATE='2023-12-20T00:00:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2023-12-20T00:00:00+00:00'
+[2023-12-21T16:07:32.813+0000] {python.py:201} INFO - Done. Returned value was: None
+[2023-12-21T16:07:32.822+0000] {taskinstance.py:1138} INFO - Marking task as SUCCESS. dag_id=data_ingestion_gcs_dag, task_id=format_to_parquet_task, execution_date=20231220T000000, start_date=20231221T160732, end_date=20231221T160732
+[2023-12-21T16:07:32.847+0000] {local_task_job_runner.py:234} INFO - Task exited with return code 0
+[2023-12-21T16:07:32.872+0000] {taskinstance.py:3281} INFO - 1 downstream tasks scheduled from follow-on schedule check
