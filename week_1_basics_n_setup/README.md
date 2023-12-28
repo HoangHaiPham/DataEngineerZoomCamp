@@ -498,7 +498,7 @@ For this course, use a free version (upto 300 Euro credits).
 5. Set environment variable to point to your downloaded GCP auth-keys:
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="<payh/to/your/service-account-authkeys>.json"
+export GOOGLE_APPLICATION_CREDENTIALS="<path/to/your/service-account-authkeys>.json"
 
 export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json"
 
