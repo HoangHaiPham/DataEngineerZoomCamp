@@ -367,15 +367,6 @@ with DAG(
 - The starting date is what it sounds like: defines when the jobs will start.
   - The jobs will start **_AFTER_** the start date. In this example, the starting date is January 1st, which means that the job won't run until January 2nd.
 
-### Run Airflow
-
-If the Terraform is not deployed -> Run the following command to deploy the infrastructure
-
-- terraform init -> terraform plan -> terraform apply.
-- Then run [Airflow Execution](#execution).
-- Go to localhost:8080 and login.
-  ![airflow-run](./images/airflow-run.png)
-
 ### Airflow and DAG tips and tricks
 
 The default Airflow Docker image does not have `wget` by default. You can either add a line to your custom image to install it or you can use `curl` instead. Here's how to handle file downloading:
@@ -469,3 +460,25 @@ A key design principle of tasks and DAGs is **_idempotency_**. A task is **_idem
     )
     #...
     ```
+
+# Ingesting data to GCP Airflow
+
+We will now run a slightly more complex DAG that will download the NYC taxi trip data, convert it to parquet, upload it to a GCP bucket and ingest it to GCP's BigQuery.
+
+- Then run [Airflow Execution](#execution).
+- Go to localhost:8080 and login.
+  ![airflow-run](./images/airflow-run.png)
+
+1. Prepare a [DAG file](./airflow/dags/data_ingestion_gcs_dag.py) in `dags folder` for the aforementioned tasks.
+   - A `BashOperator` is used to download the dataset and then 2 `PythonOperator` tasks are used to format the file to parquet and then upload the file to a GCP bucket.
+   - More info on how to programatically upload to a bucket with Python can be found [in this link](hhttps://cloud.google.com/storage/docs/uploading-objects#storage-upload-object-python).
+   - A `BigQueryCreateExternalTableOperator` is used for ingesting the data into BigQuery. Read more about it [in this link](https://airflow.apache.org/docs/apache-airflow/1.10.12/_api/airflow/contrib/operators/bigquery_operator/index.html).
+2. If the Terraform is not deployed -> Run the following command to deploy the infrastructure.
+   - terraform init -> terraform plan -> terraform apply.
+3. If not started, run Airflow with `docker-compose build`, `docker-compose up airflow-init` and then `docker-compose up -d`. Or follow the [Airflow Execution](#execution).
+4. Select the DAG from Airflow's dashboard and trigger it.
+5. Once the DAG finishes, Go to your GCP project's dashboard and search for BigQuery. You should see your project ID; expand it and you should see a new `trips_data_all` database with an `external_table` table.
+   ![big-query-result](./images/big-query-result.png)
+6. Check the uploaded parquet file by searching the _Cloud Storage_ service, selecting your bucket and then clicking on the `raw/` folder. You may click on the filename to access an info panel.
+7. You may now shutdown Airflow by running `docker-compose down` on the terminal where you run it.
+8. To stop and delete containers, delete volumes with database data, and download images, run `docker-compose down --volumes --rmi all`.
