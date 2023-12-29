@@ -362,7 +362,7 @@ with DAG(
 ```
 
 - The scheduler will run a job **_AFTER_** the start date, at the **_END_** of the interval
-- The interval is defined as a [cron job](https://www.wikiwand.com/en/Cron) expression. You can use [crontab guru](https://www.wikiwand.com/en/Cron) to define your own.
+- The interval is defined as a [cron job](https://www.wikiwand.com/en/Cron) expression. You can use [crontab guru](https://crontab.guru/) to define your own.
   - In this example, `0 6 2 * *` means that the job will run at 6:00 AM on the second day of the month each month.
 - The starting date is what it sounds like: defines when the jobs will start.
   - The jobs will start **_AFTER_** the start date. In this example, the starting date is January 1st, which means that the job won't run until January 2nd.
@@ -381,9 +381,31 @@ The default Airflow Docker image does not have `wget` by default. You can either
   - `-L` will follow a link in case the original URL redirects somewhere else.
   - By default, `curl` outputs to console. We could use the `-o` option to print to a file or redirect the output in the shell with `>` as shown here.
 
-- `strftime()` is a Python function that returns a string representing a date. You can check how to define the format of the string [in this link](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior).
+We want to periodically download data each month and the filename changes according to the name and month. We can use _templating_ to parametrize the filename.
 
-When creating a custom Airflow Docker image, in the Dockerfile, when installing additional packages with `pip`, it's a good idea to disable caching in order to make smaller images:
+```python
+import os
+AIRFLOW_HOME = os.environ.get("AIRFLOW_HOME", "/opt/airflow/")
+URL_PREFIX = 'https://s3.amazonaws.com/nyc-tlc/trip+data'
+URL_TEMPLATE = URL_PREFIX + '/yellow_tripdata_{{ execution_date.strftime(\'%Y-%m\') }}.csv'
+OUTPUT_FILE_TEMPLATE = AIRFLOW_HOME + '/output_{{ execution_date.strftime(\'%Y-%m\') }}.csv'
+
+with my_worflow as dag:
+  download_task = BashOperator(
+    task_id = 'download'
+    bash_command=f'curl -sSL {URL_TEMPLATE} > {OUTPUT_FILE_TEMPLATE}'
+  )
+```
+
+- Airflow uses the [Jinja template engine](https://jinja.palletsprojects.com/en/3.0.x/).
+- Jinja templates make use of `{%...%}` for statements (control structures such as `if` and `for`, macros, etc) and `{{...}}` for expressions (literals, math and logic operators, variables, Python methods, etc).
+- Airflow offers a series of predefined variables and macros which can be consulted [in this link](https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html).
+- We use a template to rename the file with the current year and month that the task is running:
+  - `execution_date` is an Airflow variable that returns the _execution date_ (or _logical date_ in newer versions of Airflow) of the task, which denotes the current data interval as specified by the `start_date` of the DAG and the number of executions. In this example, this is useful to download past data, since we can trigger this DAG manually and in each execution the execution date will increase by the amount specified in the `schedule_interval`, thus allowing us to download data for multiple months by simply rerunning the DAG.
+    - Do not confuse this variable with the actual current date!
+  - `strftime()` is a Python function that returns a string representing a date. You can check how to define the format of the string [in this link](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior). In this example we're outputting the year and month.
+
+When creating a custom Airflow Docker image, in the Dockerfile, when installing additional packages with `pip`, it's a good idea to disable caching in order to make smaller images (do not save things to cache):
 
 ```dockerfile
 RUN pip install --no-cache-dir -r requirements.txt
@@ -461,7 +483,9 @@ A key design principle of tasks and DAGs is **_idempotency_**. A task is **_idem
     #...
     ```
 
-# Ingesting data to GCP Airflow
+# **Ingesting data to GCP Airflow**
+
+### Using [docker-compose_gcp.yaml](./airflow/extras/docker-compose_gcp.yaml) for `docker-compose.yaml` file & using [Dockerfile_gcp](./airflow/extras/Dockerfile_gcp) for `Dockerfile`.
 
 We will now run a slightly more complex DAG that will download the NYC taxi trip data, convert it to parquet, upload it to a GCP bucket and ingest it to GCP's BigQuery.
 
@@ -482,3 +506,153 @@ We will now run a slightly more complex DAG that will download the NYC taxi trip
 6. Check the uploaded parquet file by searching the _Cloud Storage_ service, selecting your bucket and then clicking on the `raw/` folder. You may click on the filename to access an info panel.
 7. You may now shutdown Airflow by running `docker-compose down` on the terminal where you run it.
 8. To stop and delete containers, delete volumes with database data, and download images, run `docker-compose down --volumes --rmi all`.
+
+# [DE Zoomcamp 2.3.3 - Ingesting Data to Local Postgres with Airflow](https://www.youtube.com/watch?v=s2U8MWJH5xA&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=21)
+
+### Using [docker-compose_localDB.yaml](./airflow/extras/docker-compose_localDB.yaml) for `docker-compose.yaml` file & using [Dockerfile_localDB](./airflow/extras/Dockerfile_localDB) for `Dockerfile`.
+
+- Start with docker-compose.
+- Change the DAG mappings.
+- Create a new DAG with 2 dummies.
+- Make them run smoothly.
+- Create a bash operator, pass the params (`execution_date.strftime(\'%Y-%m\')`).
+- Download the data.
+- Put the ingestion script to Airflow.
+- Modify dependencies - add the ingestion script dependencies.
+- Put old docker-compose file in the same network. For [Ref](https://stackoverflow.com/questions/38088279/communication-between-multiple-docker-compose-projects).
+
+We want to run our Postgres setup from last section locally as well as Airflow, and we will use the `ingest_data.py` script from a DAG to ingest the NYC taxi trip data to our local Postgres.
+
+Start from scratch:
+
+1. Create folder `dags_local`.
+
+2. Modify `docker-compose` file.
+
+   - At `volumes` section:
+     ```yaml
+     volumes:
+       - ./dags_local:/opt/airflow/dags
+       - ./logs:/opt/airflow/logs
+       - ./plugins:/opt/airflow/plugins
+       - ~/.google/credentials/:/.google/credentials:ro
+     ```
+   - Add the environment variables at `build` section:
+
+     ```yaml
+     PG_HOST: "${PG_HOST}"
+     PG_USER: "${PG_USER}"
+     PG_PASSWORD: "${PG_PASSWORD}"
+     PG_PORT: "${PG_PORT}"
+     PG_DATABASE: "${PG_DATABASE}"
+     ```
+
+   - The file can be found [here](./airflow/extras/docker-compose_localDB.yaml)
+
+3. Modify `.env` file with content as follow and run
+
+   ```bash
+   AIRFLOW_UID=50000
+
+   PG_HOST=pgdatabase
+   PG_USER=root
+   PG_PASSWORD=root
+   PG_PORT=5432
+   PG_DATABASE=ny_taxi
+   ```
+
+   > echo -e "AIRFLOW_UID=${id -u} > .env
+
+4. Prepare a DAG [data_ingestion_localDB_dag.py](./airflow/dags_local/data_ingestion_localDB_dag.py) inside folder `dags_local`. The DAG will have the following tasks:
+
+   - A download `BashOperator` task that will download the NYC taxi data.
+   - A `PythonOperator` task that will call our ingest script in order to fill our database.
+   - All the necessary info for connecting to the database will be defined as environment variables.
+
+5. In order to make the process faster of building docker image, the parts related GCP in `Dockerfile` can be removed. Remove this part.
+
+   ```Dockerfile
+   # Ref: https://airflow.apache.org/docs/docker-stack/recipes.html
+
+   USER root
+   SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
+
+   ARG CLOUD_SDK_VERSION=322.0.0
+   ENV GCLOUD_HOME=/home/google-cloud-sdk
+
+   ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
+
+   RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-x86_64.tar.gz" \
+       && TMP_DIR="$(mktemp -d)" \
+       && curl -fL "${DOWNLOAD_URL}" --output "${TMP_DIR}/google-cloud-sdk.tar.gz" \
+       && mkdir -p "${GCLOUD_HOME}" \
+       && tar xzf "${TMP_DIR}/google-cloud-sdk.tar.gz" -C "${GCLOUD_HOME}" --strip-components=1 \
+       && "${GCLOUD_HOME}/install.sh" \
+         --bash-completion=false \
+         --path-update=false \
+         --usage-reporting=false \
+         --quiet \
+       && rm -rf "${TMP_DIR}" \
+       && gcloud --version
+
+   WORKDIR $AIRFLOW_HOME
+
+   USER $AIRFLOW_UID
+   ```
+
+   - Modify the custom [`Dockerfile`](./airflow/extras/Dockerfile_localDB) so that we can run our script (this is only for the purposes of this exercise) by installing the additional Python libraries that the `ingest_script.py` file needs.
+   - Add this right after installing the `requirements.txt` file:
+
+   ```bash
+   RUN pip install --no-cache-dir pandas sqlalchemy psycopg2-binary
+   ```
+
+6. To access bash terminal of Airflow container, run the command
+
+   > docker exec -it `docker-id` bash
+
+7. Prepare an [ingestion script](./airflow/dags_local/ingest_script.py) inside `dags_local` folder.
+
+   - This script is heavily based on the script from last session, but the code has been wrapped inside a `ingest_callable()` method that will receive parameters from Airflow in order to connect to the database.
+   - We originally ran a dockerized version of the script; we could dockerize it again with a special `DockerOperator` task but we will simply run it with `PythonOperator` in our DAG for simplicity.
+
+8. How to connect [Airflow docker-compose.yaml](./airflow/extras/docker-compose_localDB.yaml) file to [Postgres & PgAdmin docker-compose.yaml file](./airflow/docker-compose-week1.yaml) file in week_1?
+
+   - Rebuild the **Airflow** image with `docker-compose build` and initialize the Airflow config with `docker-compose up airflow-init`.
+   - Start **Airflow** by using `docker-compose up -d` and on a separate terminal, find out which virtual network it's running on with `docker network ls`. It most likely will be something like `airflow_default`.
+   - Modify the **Postgres** [docker-compose-week1.yaml](./airflow/docker-compose-week1.yaml) file from week 1 by adding the `network` info and commenting away the `pgAdmin` service in order to reduce the amount of resources we will consume. For **Postgres** container, use these command.
+
+   - We need to explicitly call the file because we're using a non-standard name.
+
+     > docker-compose -f docker-compose-week1.yaml up -d
+
+     > pgcli -h localhost -p 5432 -U root -d ny_taxi
+
+     > \dt
+
+9. Optionally, you can login to a worker container and try to access the database from there.
+
+   - Run `docker ps` and look for a `airflow_airflow-worker` (for full version of Airflow) container or `airflow-airflow-scheduler` (for light version of Airflow). Copy the container ID.
+   - Login to the worker container with `docker exec -it <container_id> bash`
+   - Run `python3` to start Python's interactive mode. Run the following lines:
+     ```python
+     from sqlalchemy import create_engine
+     engine = create_engine(f'postgresql://root:root@pg-database:5432/ny_taxi')
+     engine.connect()
+     ```
+   - You should see the output of the `connect()` method. You may now exit both the Python console and logout from the container.
+
+10. Open the Airflow dashboard and trigger the `LocalIngestionDag` DAG by clicking on the Play icon. Inside the detailed DAG view you will find the status of the tasks as they download the files and ingest them to the database. Note that the DAG will run as many times as stated in the drop down menu, which is 25 by default.
+
+11. As both the download, format and ingest tasks finish and the squares for both turn dark green, you may use `pgcli -h localhost -p 5432 -u root -d ny_taxi` on a separate terminal to check the tables on your local Postgres database. You should see a new table per run.
+
+12. Once you're finished, remember to use
+    - For Postgres container:
+      > ocker-compose -f docker-compose-week1.yaml down
+    - For Airflow container:
+
+      > docker-compose down
+
+      To stop all containers and cleaned everything with
+
+      > docker-compose down --volumes --rmi all
