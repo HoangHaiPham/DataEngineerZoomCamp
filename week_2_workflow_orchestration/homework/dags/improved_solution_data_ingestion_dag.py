@@ -127,7 +127,7 @@ default_args = {
 This DAG is designed to transfer YELLOW_TAXI data to GCP bucket
 """
 YELLOW_TAXI_PARQUET_FILE = 'yellow_tripdata_{{ data_interval_start.strftime(\'%Y-%m\') }}.parquet'
-YELLOW_TAXI_GCP_PATH = f"raw-new/yellow_trip/{YELLOW_TAXI_PARQUET_FILE}"
+YELLOW_TAXI_GCP_PATH = f"raw/yellow_trip/{YELLOW_TAXI_PARQUET_FILE}"
 
 yellow_taxi = DAG(
     dag_id="data_ingestion_yellow_taxi",
@@ -150,7 +150,7 @@ donwload_parquetize_upload_dag(
 This DAG is designed to transfer FHV data to GCP bucket
 """
 FHV_PARQUET_FILE = 'fhv_tripdata_{{ data_interval_start.strftime(\'%Y-%m\') }}.parquet'
-FHV_GCS_PATH = f"raw-new/fhv/{FHV_PARQUET_FILE}"
+FHV_GCS_PATH = f"raw/fhv/{FHV_PARQUET_FILE}"
 
 fhv = DAG(
     dag_id="data_ingestion_fhv",
@@ -175,7 +175,7 @@ This DAG is designed to transfer ZONES data to GCP bucket
 ZONE_URL_PREFIX = r'https://d37ci6vzurychx.cloudfront.net/misc/'
 ZONES_CSV_FILE = 'taxi+_zone_lookup.csv'
 ZONES_PARQUET_FILE = f"{ZONES_CSV_FILE.replace('.csv', '.parquet')}"
-ZONES_GCP_PATH = f"raw-new/zones/{ZONES_PARQUET_FILE}"
+ZONES_GCP_PATH = f"raw/zones/{ZONES_PARQUET_FILE}"
 zones = DAG(
     dag_id="data_ingestion_zones",
     start_date=datetime.datetime(2019, 1, 1),
