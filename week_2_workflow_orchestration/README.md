@@ -647,6 +647,7 @@ Start from scratch:
 11. As both the download, format and ingest tasks finish and the squares for both turn dark green, you may use `pgcli -h localhost -p 5432 -u root -d ny_taxi` on a separate terminal to check the tables on your local Postgres database. You should see a new table per run.
 
 12. Once you're finished, remember to use
+
     - For Postgres container:
       > ocker-compose -f docker-compose-week1.yaml down
     - For Airflow container:
@@ -656,3 +657,12 @@ Start from scratch:
       To stop all containers and cleaned everything with
 
       > docker-compose down --volumes --rmi all
+
+# Transfer service (AWS -> GCP)
+
+Moving files from AWS to GCP.
+
+You will need an AWS account for this. This section is optional
+
+- [DE Zoomcamp 2.4.1 - Moving Files from AWS to GPC with Transfer Service](https://www.youtube.com/watch?v=rFOFTfD1uGk&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb)
+- [DE Zoomcamp 2.4.2 - Configuring the Transfer Service with Terraform](https://www.youtube.com/watch?v=VhmmbqpIzeI&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb)
