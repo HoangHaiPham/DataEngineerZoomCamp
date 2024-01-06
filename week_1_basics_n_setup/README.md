@@ -1,3 +1,14 @@
+# Table of contents
+
+- [DE Zoomcamp 1.2.1 - Introduction to Docker](#de-zoomcamp-111---introduction-to-google-cloud-platform)
+- [DE Zoomcamp 1.2.2 - Investing NY Taxi Data to Postgres](#de-zoomcamp-122---investing-ny-taxi-data-to-postgres)
+- [DE Zoomcamp 1.2.3 - Connecting pgAdmin and Postgres](#de-zoomcamp-123---connecting-pgadmin-and-postgres)
+- [DE Zoomcamp 1.2.4 - Dockerizing the Ingestion Script](#de-zoomcamp-124---dockerizing-the-ingestion-script)
+- [DE Zoomcamp 1.2.5 - Running Postgres and pgAdmin with Docker-Compose](#de-zoomcamp-125---running-postgres-and-pgadmin-with-docker-compose)
+- [DE Zoomcamp 1.2.6 - SQL Refreshser](#de-zoomcamp-126---sql-refreshser)
+- [DE Zoomcamp 1.3.1 - Introduction to Terraform Concepts & GCP Pre-Requisites](#de-zoomcamp-131---introduction-to-terraform-concepts--gcp-pre-requisites)
+- [DE Zoomcamp 1.3.2 - Creating GCP Infrastructure with Terraform](#de-zoomcamp-132---creating-gcp-infrastructure-with-terraform)
+
 # [DE Zoomcamp 1.2.1 - Introduction to Docker](https://www.youtube.com/watch?v=EYNwNlOrpr0&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=4)
 
 - Why do we need Docker
@@ -110,7 +121,7 @@ In order to log in to the database, some configurations need to be set up.
 
 Save 1000 rows from the original file to new file
 
-> head -n 1000 yellow_tripdate_2021-01.csv > yellow_head.csv
+> head -n 1000 yellow_tripdata_2021-01.csv > yellow_head.csv
 
 Count number of rows in csv file
 

@@ -1,5 +1,14 @@
 # With Airflow
 
+# Table of contents
+
+- [DE Zoomcamp 2.1.1 - Data Lake](#de-zoomcamp-211---data-lake)
+- [DE Zoomcamp 2.2.1 - Introduction to Workflow orchestration](#de-zoomcamp-221---introduction-to-workflow-orchestration)
+- [DE Zoomcamp 2.3.1 - Setup Airflow Environment with Docker-Compose](#de-zoomcamp-231---setup-airflow-environment-with-docker-compose)
+- [DE Zoomcamp 2.3.4 - Optional: Lightweight Local Setup for Airflow](#de-zoomcamp-234---optional-lightweight-local-setup-for-airflow)
+- [DE Zoomcamp 2.3.2 - Ingesting Data to GCP with Airflow](#de-zoomcamp-232---ingesting-data-to-gcp-with-airflow)
+- [DE Zoomcamp 2.3.3 - Ingesting Data to Local Postgres with Airflow](#de-zoomcamp-233---ingesting-data-to-local-postgres-with-airflow)
+
 # [DE Zoomcamp 2.1.1 - Data Lake](https://www.youtube.com/watch?v=W3Zm6rjOq70&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=20)
 
 - What is a Data Lake
