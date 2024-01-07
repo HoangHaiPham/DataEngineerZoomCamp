@@ -15,6 +15,7 @@ Slides can be found [here](./DTalks-DataEng-Data%20Warehouse.pptx)
   - [BigQuery Architecture](#bigquery-architecture)
   - [Column-oriented vs record-oriened storage](#column-oriented-vs-record-oriented-storage)
   - [Dremel operation](#dremel-operation)
+- [DE Zoomcamp 3.3.1 - BigQuery Machine Learning](#de-zoomcamp-331---bigquery-machine-learning)
 
 # [DE Zoomcamp 3.1.1 - Data Warehouse and BigQuery](https://www.youtube.com/watch?v=jrHljAoD6nM&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=26)
 
@@ -324,3 +325,176 @@ When performing queries, Dremel modifies them in order to create an _execution t
 The columnar storage format is perfect for this workflow as it allows very fast data retrieval from colossus by multiple workers, which then perform any needed computation on the retrieved datapoints and return them to the mixers, which will perform any necessary aggregation before returning that data to the root server, which will compose the final output of the query.
 
 ![dremel-operation](./images/dremel-operation.png)
+
+# [DE Zoomcamp 3.3.1 - BigQuery Machine Learning](https://www.youtube.com/watch?v=B-WtpB0PuG4&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=24)
+
+- BigQuery ML
+- Build a basic model, export & run with docker.
+
+**_BigQuery ML_** is a BigQuery feature which allows us to create and execute Machine Learning models using standard SQL queries, without additional knowledge of Python nor any other programming languages and without the need to export data into a different system.
+
+Generally when training a machine learning model, you would:
+
+- Export the data from data warehouse.
+- Build a model.
+- Train the model.
+- Deploy the model.
+
+![big-query-ml-process](./images/big-query-ml-process.png)
+
+**BigQuery allows us to**
+
+- Build the model in the data warehouse itself -> removes extra step of exporting the data.
+- Split data into training & evaluation step.
+- [Feature processing](https://cloud.google.com/bigquery/docs/preprocess-overview).
+- Choose different models/algorithms + hyperparameters tuning.
+- Provide many error matrices to do validation.
+- Deploy model using docker image.
+
+The pricing for BigQuery ML is slightly different and more complex than regular BigQuery. Some resources are free of charge up to a specific limit as part of the [Google Cloud Free Tier](https://cloud.google.com/free). You may check the current pricing [in this link](https://cloud.google.com/bigquery-ml/pricing).
+
+**BigQuery ML Free**
+
+- 10 GB per month of data storage.
+- 1 TB per month of queries processed.
+- ML Create model step: first 10 GB per month is free.
+
+BigQuery ML offers a variety of ML models depending on the use case, as the image below shows:
+
+![big-query-ml-models](./images/big-query-ml-models.png)
+
+In this lecture:
+
+- `linear regression model` will be built.
+- Dataset `yellow_tripdata_partitioned` will be used.
+- _Purpose_: predict the tip amount.
+
+We will choose some columns which are relevant for the exercise.
+
+```sql
+-- Select the columns relevant for project
+SELECT passenger_count, trip_distance, PULocationID, DOLocationID, payment_type, fare_amount, tolls_amount, tip_amount
+FROM `dtc-de-0201.trips_data_all.yellow_tripdata_partitioned` where fare_amount!=0;
+```
+
+We will now create a few example queries to show how BigQuery ML works. Let's begin with creating a custom table:
+
+```sql
+-- Create a ML table with appropriate type
+CREATE OR REPLACE TABLE `dtc-de-0201.trips_data_all.yellow_tripdata_ml` (
+  `passenger_count` INTEGER,
+  `trip_distance` FLOAT64,
+  `PULocationID` STRING,
+  `DOLocationID` STRING,
+  `payment_type` STRING,
+  `fare_amount` FLOAT64,
+  `tolls_amount` FLOAT64,
+  `tip_amount` FLOAT64
+) AS (
+  SELECT CAST(passenger_count AS INT64), trip_distance, CAST(PULocationID AS STRING), CAST(DOLocationID AS STRING),
+  CAST(payment_type AS STRING), fare_amount, tolls_amount, tip_amount
+  FROM `dtc-de-0201.trips_data_all.yellow_tripdata_partitioned` where fare_amount!=0
+);
+```
+
+- BigQuery supports [**_feature preprocessing_**](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-preprocess-overview), both **_manual_** and **_automatic_**.
+- A few columns such as `PULocationID` are categorical in nature but are represented with integer numbers in the original table. We **_cast_** them as strings in order to get BQ to automatically preprocess them as categorical features that will be one-hot encoded.
+- Our target feature for the model will be `tip_amount`. We drop all records where `tip_amount` equals zero in order to improve training.
+
+Let's now create a simple `linear regression model` with default settings:
+
+```sql
+-- Create model with default setting
+CREATE OR REPLACE MODEL `dtc-de-0201.trips_data_all.tip_model`
+OPTIONS (
+  model_type = 'linear_reg',
+  input_label_cols = ['tip_amount'],
+  DATA_SPLIT_METHOD = 'AUTO_SPLIT'
+) AS
+SELECT * FROM `dtc-de-0201.trips_data_all.yellow_tripdata_ml`
+WHERE tip_amount IS NOT NULL;
+```
+
+- The `CREATE MODEL` clause will create the `dtc-de-0201.trips_data_all.tip_model` model.
+- The `OPTIONS()` clause contains all of the necessary arguments to create our model.
+  - `model_type = 'linear_reg'` is for specifying that we will create a linear regression model.
+  - `input_label_cols = ['tip_amount']` lets BigQuery knows that our target feature is `tip_amount`. For linear regression models, target features must be real numbers.
+  - `DATA_SPLIT_METHOD = 'AUTO_SPLIT'` is for automatically splitting the dataset into train/test datasets.
+- The `SELECT` statement indicates which features need to be considered for training the model.
+  - Since we already created a dedicated table with all of the needed features, we simply select them all.
+- Running this query may take several minutes.
+- After the query runs successfully, the BigQuery explorer in the side panel will show all available models (just one in our case) with a special icon. Selecting a model will open a new tab with additional info such as model details, training graphs and evaluation metrics.
+
+We can also get a description of the features with the following query:
+
+```sql
+SELECT * FROM ML.FEATURE_INFO(MODEL `dtc-de-0201.trips_data_all.tip_model`);
+```
+
+- The output will be similar to `describe()` in Pandas.
+
+Model evaluation against a separate dataset is as follows:
+
+```sql
+-- Evaluate the model
+SELECT * FROM ML.EVALUATE(MODEL `dtc-de-0201.trips_data_all.tip_model`,
+  (
+    SELECT * FROM `dtc-de-0201.trips_data_all.yellow_tripdata_ml`
+    WHERE tip_amount IS NOT NULL
+  )
+);
+```
+
+- This will output similar metrics to those shown in the model info tab but with the updated values for the evaluation against the provided dataset.
+- In this example we evaluate with the same dataset we used for training the model, so this is a silly example for illustration purposes.
+
+The main purpose of a ML model is to make predictions. A `ML.PREDICT` statement is used for doing them:
+
+```sql
+-- Predict the model
+SELECT * FROM ML.PREDICT(MODEL `dtc-de-0201.trips_data_all.tip_model`,
+  (
+    SELECT * FROM `dtc-de-0201.trips_data_all.yellow_tripdata_ml`
+    WHERE tip_amount IS NOT NULL
+  )
+);
+```
+
+- The `SELECT` statement within `ML.PREDICT` provides the records for which we want to make predictions.
+- Once again, we're using the same dataset we used for training to calculate predictions, so we already know the actual tips for the trips, but this is just an example.
+
+Additionally, BigQuery ML has a special `ML.EXPLAIN_PREDICT` statement that will return the prediction along with the most important features that were involved in calculating the prediction for each of the records we want predicted.
+
+```sql
+-- Predict and explain
+SELECT * FROM ML.EXPLAIN_PREDICT(MODEL `dtc-de-0201.trips_data_all.tip_model`,
+  (
+    SELECT * FROM `dtc-de-0201.trips_data_all.yellow_tripdata_ml`
+    WHERE tip_amount IS NOT NULL
+  ), STRUCT(3 AS top_k_features)
+);
+```
+
+- This will return a similar output to the previous query but for each prediction, 3 additional rows will be provided with the most significant features along with the assigned weights for each feature.
+
+Just like in regular ML models, BigQuery ML models can be improved with **_hyperparameter tunning_**. Here's an example query for tuning:
+
+```sql
+-- Hyper param tunning
+CREATE OR REPLACE MODEL `dtc-de-0201.trips_data_all.tip_hyperparam_model`
+OPTIONS (
+  model_type = 'linear_reg',
+  input_label_cols = ['tip_amount'],
+  DATA_SPLIT_METHOD = 'AUTO_SPLIT',
+  num_trials = 5,
+  max_parallel_trials = 2,
+  l1_reg = hparam_range(0, 20),
+  l2_reg = hparam_candidates([0, 0.1, 1, 10])
+) AS SELECT * FROM `dtc-de-0201.trips_data_all.yellow_tripdata_ml`
+WHERE tip_amount IS NOT NULL;
+```
+
+- We create a new model as normal but we add the `num_trials` option as an argument.
+- All of the regular arguments used for creating a model are available for tuning. In this example we opt to tune the L1 and L2 regularizations.
+
+All of the necessary reference documentation is available [in this link](https://cloud.google.com/bigquery-ml/docs/reference).
