@@ -1,3 +1,5 @@
+**/serving_dir/*
+
 # Local .terraform directories
 **/.terraform/*
 

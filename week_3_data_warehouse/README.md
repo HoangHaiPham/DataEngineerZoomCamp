@@ -16,6 +16,7 @@ Slides can be found [here](./DTalks-DataEng-Data%20Warehouse.pptx)
   - [Column-oriented vs record-oriened storage](#column-oriented-vs-record-oriented-storage)
   - [Dremel operation](#dremel-operation)
 - [DE Zoomcamp 3.3.1 - BigQuery Machine Learning](#de-zoomcamp-331---bigquery-machine-learning)
+- [DE Zoomcamp 3.3.2 - BigQuery Machine Learning Deployment](#de-zoomcamp-332---bigquery-machine-learning-deployment)
 
 # [DE Zoomcamp 3.1.1 - Data Warehouse and BigQuery](https://www.youtube.com/watch?v=jrHljAoD6nM&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=26)
 
@@ -498,3 +499,75 @@ WHERE tip_amount IS NOT NULL;
 - All of the regular arguments used for creating a model are available for tuning. In this example we opt to tune the L1 and L2 regularizations.
 
 All of the necessary reference documentation is available [in this link](https://cloud.google.com/bigquery-ml/docs/reference).
+
+# [DE Zoomcamp 3.3.2 - BigQuery Machine Learning Deployment](https://www.youtube.com/watch?v=BjARzEWaznU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=25)
+
+- Export the ML model we have made.
+- Deploy it to docker image.
+- Check the prediction.
+
+ML models created within BigQuery can be exported and deployed to Docker containers running TensorFlow Serving.
+
+The following steps are based on [this official tutorial](https://cloud.google.com/bigquery-ml/docs/export-model-tutorial). All of these commands are to be run from a terminal and the [gcloud sdk](https://cloud.google.com/sdk/docs/install) must be installed.
+
+1. Authenticate to your GCP project.
+   ```sh
+   gcloud auth login
+   ```
+2. Create a bucket named `yellow_taxi_ml_model`.
+3. Export the model to a Cloud Storage bucket.
+   ```sh
+   bq --project_id dtc-de-0201 extract -m trips_data_all.tip_model gs://yellow_taxi_ml_model/tip_model
+   ```
+4. Download the exported model files to a temporary directory. Using `Shift + Command + G` to search for folder /tmp/model.
+
+   ```sh
+   mkdir /tmp/model
+
+   gsutil cp -r gs://yellow_taxi_ml_model/tip_model /tmp/model
+   ```
+
+5. Create a version subdirectory
+
+   ```sh
+   mkdir -p serving_dir/tip_model/1
+
+   cp -r /tmp/model/tip_model/* serving_dir/tip_model/1
+
+   # Optionally you may erase the temporary directoy
+   rm -r /tmp/model
+   ```
+
+6. Pull the TensorFlow Serving Docker image
+   ```sh
+   docker pull tensorflow/serving
+   ```
+7. Run the Docker image. Mount the version subdirectory as a volume and provide a value for the `MODEL_NAME` environment variable.
+   ```sh
+   # Make sure you don't mess up the spaces!
+   docker run \
+     -p 8501:8501 \
+     --mount type=bind,source=`pwd`/serving_dir/tip_model,target=/models/tip_model \
+     -e MODEL_NAME=tip_model \
+     -t tensorflow/serving &
+   ```
+8. With the image running, run a prediction with curl, providing values for the features used for the predictions.
+   ```sh
+   curl \
+     -d '{"instances": [{"passenger_count":1, "trip_distance":12.2, "PULocationID":"193", "DOLocationID":"264", "payment_type":"2","fare_amount":20.4,"tolls_amount":0.0}]}' \
+     -X POST http://localhost:8501/v1/models/tip_model:predict
+   ```
+   Or Postman can be used to check GET/POST request API while the docker image is running.
+
+# Loading Parquet data from Cloud Storage by `bq` with schema type
+
+```bash
+bq --location=europe-west3 load \
+--noreplace \
+--source_format=PARQUET \
+--noautodetect --parquet_enum_as_string=true \
+--ignore_unknown_values \
+trips_data_all.external_fhv_data_test \
+'gs://dtc_data_lake_dtc-de-0201/raw/fhv/fhv_tripdata_2019-*.parquet' \
+./schema.json
+```
