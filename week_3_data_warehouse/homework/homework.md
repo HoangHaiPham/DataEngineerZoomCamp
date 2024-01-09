@@ -19,6 +19,8 @@ What is the count for fhv vehicle records for year 2019?
 - 22,978,333
 - 13,942,414
 
+> Answer: 43,244,696
+
 ## Question 2:
 
 Write a query to count the distinct number of affiliated_base_number for the entire dataset on both the tables.</br>
@@ -29,6 +31,8 @@ What is the estimated amount of data that will be read when this query is execut
 - 0 MB for the External Table and 0MB for the BQ Table
 - 0 MB for the External Table and 317.94MB for the BQ Table
 
+> Answer: 322.67 MB for the External Table & 322.67 MB for the BigQuery Table.
+
 ## Question 3:
 
 How many records have both a blank (null) PUlocationID and DOlocationID in the entire dataset?
@@ -38,6 +42,8 @@ How many records have both a blank (null) PUlocationID and DOlocationID in the e
 - 5
 - 20,332
 
+> Answer: 717,748
+
 ## Question 4:
 
 What is the best strategy to optimize the table if query always filter by pickup_datetime and order by affiliated_base_number?
@@ -46,6 +52,8 @@ What is the best strategy to optimize the table if query always filter by pickup
 - Partition by pickup_datetime Cluster on affiliated_base_number
 - Partition by pickup_datetime Partition by affiliated_base_number
 - Partition by affiliated_base_number Cluster on pickup_datetime
+
+> Answer: Partition by pickup_datetime, cluster on Affiliated_base_number
 
 ## Question 5:
 
@@ -57,6 +65,8 @@ Use the BQ table you created earlier in your from clause and note the estimated 
 - 582.63 MB for non-partitioned table and 0 MB for the partitioned table
 - 646.25 MB for non-partitioned table and 646.25 MB for the partitioned table
 
+> Answer: 652.6 MB for non-partitioned table and 23.07 MB for partitioned-clusted table.
+
 ## Question 6:
 
 Where is the data stored in the External Table you created?
@@ -66,6 +76,8 @@ Where is the data stored in the External Table you created?
 - Container Registry
 - Big Table
 
+> Answer: GCP Bucket
+
 ## Question 7:
 
 It is best practice in Big Query to always cluster your data:
@@ -73,11 +85,15 @@ It is best practice in Big Query to always cluster your data:
 - True
 - False
 
+> Answer: False
+
 ## (Not required) Question 8:
 
 A better format to store these files may be parquet. Create a data pipeline to download the gzip files and convert them into parquet. Upload the files to your GCP Bucket and create an External and BQ Table.
 
 Note: Column types for all files used in an External Table must have the same datatype. While an External Table may be created and shown in the side panel in Big Query, this will need to be validated by running a count query on the External Table to check if any errors occur.
+
+- dag file can be found [here](./dags/fhv_data_dag.py).
 
 ## Solution
 
