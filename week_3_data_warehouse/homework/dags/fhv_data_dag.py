@@ -156,6 +156,29 @@ donwload_parquetize_upload_dag(
     gcs_path_template = FHV_GCS_PATH,
 )
 
+"""_summary_
+This DAG is designed to transfer Green taxi data to GCP bucket
+"""
+URL_PREFIX = r'https://github.com/DataTalksClub/nyc-tlc-data/releases/download/green/'
+GREEN_TRIP_CSV_FILE = 'green_tripdata_{{ data_interval_start.strftime(\'%Y-%m\') }}.csv.gz'
+GREEN_TRIP_PARQUET_FILE = f"{GREEN_TRIP_CSV_FILE.replace('.csv.gz', '.parquet')}"
+GREEN_TRIP_GCS_PATH = f"raw/green_trip/{GREEN_TRIP_PARQUET_FILE}"
+
+green_trip = DAG(
+    dag_id="data_ingestion_green_taxi",
+    start_date=datetime.datetime(2019, 1, 1),
+    end_date=datetime.datetime(2020, 12, 31),
+    schedule_interval="0 6 2 * *",
+    default_args=default_args,
+)
+
+donwload_parquetize_upload_dag(
+    dag = green_trip,
+    url_template = f"{URL_PREFIX}/{GREEN_TRIP_CSV_FILE}",
+    local_csv_path_template = f"{AIRFLOW_HOME}/{GREEN_TRIP_CSV_FILE}",
+    local_parquet_path_template = f"{AIRFLOW_HOME}/{GREEN_TRIP_PARQUET_FILE}",
+    gcs_path_template = GREEN_TRIP_GCS_PATH,
+)
 
 """_summary_
   Create an External and BigQuery Table
