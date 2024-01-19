@@ -25,6 +25,14 @@ _Note: If you recieve an error stating "Permission denied while globbing file pa
 - [DE Zoomcamp 4.1.2 - What is dbt](#de-zoomcamp-412---what-is-dbt)
 - [DE Zoomcamp 4.2.1 - Start Your dbt Project: BigQuery and dbt Cloud (Alternative A)](#de-zoomcamp-421---start-your-dbt-project-bigquery-and-dbt-cloud-alternative-a)
 - [DE Zoomcamp 4.2.2 - Start Your dbt Project: Postgres and dbt Core Locally (Alternative B)](#de-zoomcamp-422---start-your-dbt-project-postgres-and-dbt-core-locally-alternative-b)
+- [DE Zoomcamp 4.3.1 - Build the First dbt Models](#de-zoomcamp-431---build-the-first-dbt-models)
+  - [Anatomy of a dbt model: written code vs compiled Sources](#anatomy-of-a-dbt-model-written-code-vs-compiled-sources)
+  - [The FROM clause](#the-from-clause)
+  - [Define a source and develop the first model](#define-a-source-and-develop-the-first-model)
+  - [Macros](#macros)
+  - [Packages](#packages)
+  - [Variables](#variables)
+  - [Creating and using dbt seed](#creating-and-using-dbt-seed)
 
 # [DE Zoomcamp 4.1.1 - Analytics Engineering Basics](https://www.youtube.com/watch?v=uF76d5EmdtU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=35)
 
@@ -162,3 +170,374 @@ In the IDE windows, press the green `Initilize` button to create the project fil
 # [DE Zoomcamp 4.2.2 - Start Your dbt Project: Postgres and dbt Core Locally (Alternative B)](https://www.youtube.com/watch?v=1HmL63e-vRs&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=37)
 
 As an alternative to the cloud, that require to have a cloud database, you will be able to run the project installing dbt locally. You can follow the [official dbt documentation](https://docs.getdbt.com/docs/core/installation-overview) or use a docker image from [oficial dbt repo](https://github.com/dbt-labs/dbt-core). You will need to install the latest version (1.0) with the postgres adapter (dbt-postgres). After local installation you will have to set up the connection to PG in the `profiles.yml`, you can find the templates [here](https://docs.getdbt.com/docs/core/connect-data-platform/postgres-setup).
+
+# [DE Zoomcamp 4.3.1 - Build the First dbt Models](https://www.youtube.com/watch?v=UVI30Vxzd6c&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=39)
+
+### Anatomy of a dbt model: written code vs compiled Sources
+
+dbt models are mostly written in SQL (remember that a dbt model is essentially a `SELECT` query) but they also make use of the [Jinja templating language](https://jinja.palletsprojects.com/en/3.0.x/) for templates.
+
+Here's an example dbt model:
+
+```sql
+{{
+    config(materialized='table')
+}}
+
+SELECT *
+FROM staging.source_table
+WHERE record_state = 'ACTIVE'
+```
+
+- In the Jinja statement defined within the `{{ }}` block we call the [`config()` function](https://docs.getdbt.com/reference/dbt-jinja-functions/config). More info about Jinja macros for dbt [in this link](https://docs.getdbt.com/docs/building-a-dbt-project/jinja-macros).
+- We commonly use the `config()` function at the beginning of a model to define a **_materialization strategy_**: a strategy for persisting dbt models in a warehouse.
+  - The `table` strategy means that the model will be rebuilt as a table on each run.
+  - We could use a `view` strategy instead, which would rebuild the model on each run as a SQL view.
+  - The `incremental` strategy is essentially a `table` strategy but it allows us to add or update records incrementally rather than rebuilding the complete table on each run.
+  - The `ephemeral` strategy creates a _[Common Table Expression](https://www.essentialsql.com/introduction-common-table-expressions-ctes/)_ (CTE).
+  - You can learn more about materialization strategies with dbt [in this link](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/materializations). Besides the 4 common `table`, `view`, `incremental` and `ephemeral` strategies, custom strategies can be defined for advanced cases.
+
+dbt will compile above code into the following SQL query:
+
+```sql
+CREATE TABLE my_schema.my_model AS (
+    SELECT *
+    FROM staging.source_table
+    WHERE record_state = 'ACTIVE'
+)
+```
+
+After the code is compiled, dbt will run the compiled code in the Data Warehouse.
+
+Additional model properties are stored in YAML files. Traditionally, these files were named `schema.yml` but later versions of dbt do not enforce this as it could lead to confusion.
+
+### The FROM clause
+
+The `FROM` clause within a `SELECT` statement defines the _sources_ of the data to be used.
+
+The following sources are available to dbt models:
+
+- **_Sources_**: The data loaded within our Data Warehouse.
+
+  - We can access this data with the `source()` function.
+  - The `sources` key in our YAML file contains the details of the databases that the `source()` function can access and translate into proper SQL-valid names.
+    - Additionally, we can define `source freshness` to each source so that we can check whether a source is "fresh" or "stale", which can be useful to check whether our data pipelines are working properly.
+  - More info about sources [in this link](https://docs.getdbt.com/docs/building-a-dbt-project/using-sources).
+
+  Here's an example of how you would declare a source in a `.yml` file:
+
+  ```yaml
+  sources:
+    - name: staging
+      database: production
+      schema: trips_data_all
+
+      loaded_at_field: record_loaded_at
+      tables:
+        - name: green_tripdata
+        - name: yellow_tripdata
+          freshness:
+            error_after: { count: 6, period: hour }
+  ```
+
+  And here's how you would reference a source in a `FROM` clause:
+
+  ```sql
+  FROM {{ source('staging','yellow_tripdata') }}
+  ```
+
+  - The first argument of the `source()` function is the source name, and the second is the table name.
+
+- **_Seeds_**: CSV files which can be stored in our repo under the `seeds` folder.
+
+  - The repo gives us version controlling along with all of its benefits.
+  - Seeds are best suited to static data which changes infrequently.
+  - Seed usage:
+    1. Add a CSV file to your `seeds` folder.
+    2. Run the [`dbt seed -s file_name` command](https://docs.getdbt.com/reference/commands/seed) to create a table in our Data Warehouse.
+       - If you update the content of a seed, running `dbt seed` will append the updated values to the table rather than substituing them. Running `dbt seed --full-refresh` instead will drop the old table and create a new one.
+    3. Refer to the seed in your model with the `ref()` function.
+  - More info about seeds [in this link](https://docs.getdbt.com/docs/building-a-dbt-project/seeds).
+
+  In the case of seeds, assuming you've got a `taxi_zone_lookup.csv` file in your `seeds` folder which contains `locationid`, `borough`, `zone` and `service_zone`:
+
+  ```sql
+  SELECT
+      locationid,
+      borough,
+      zone,
+      replace(service_zone, 'Boro', 'Green') as service_zone
+  FROM {{ ref('taxi_zone_lookup') }}
+  ```
+
+Example of `ref()`. The `ref()` function references underlying tables and views in the Data Warehouse. When compiled, it will automatically build the dependencies and resolve the correct schema fo us. So, if BigQuery contains a schema/dataset called `dbt_dev` inside the `my_project` database which we're using for development and it contains a table called `stg_green_tripdata`, then the following code...
+
+```sql
+WITH green_data AS (
+    SELECT *,
+        'Green' AS service_type
+    FROM {{ ref('stg_green_tripdata') }}
+),
+```
+
+...will compile to this:
+
+```sql
+WITH green_data AS (
+    SELECT *,
+        'Green' AS service_type
+    FROM "my_project"."dbt_dev"."stg_green_tripdata"
+),
+```
+
+- The `ref()` function translates our references table into the full reference, using the `database.schema.table` structure.
+- If we were to run this code in our production environment, dbt would automatically resolve the reference to make ir point to our production schema.
+
+### Define a source and develop the first model
+
+Go to dbt IDE -> Initialize dbt project into folder `taxi_rides_ny`. Navigate to project settings in dbt Cloud and set `DBT PROJECT SUBDIRECTORY` under `week_4_analytics_engineering/taxi_rides_ny`.
+
+1.  Open file `dbt_project.yml`, change and
+
+    ```yaml
+    name: "taxi_rides_ny"
+    ---
+    models:
+      taxi_rides_ny:
+    ```
+
+1.  Under the `models` folder, create 2 new folders:
+
+    - `staging`: will have the raw models.
+
+      - Create file `stg_green_tripdata.sql`. Defining the 2 tables for yellow and green taxi data as our sources. This query will create a view in the staging dataset/schema in our database. We make use of the `source()` function to access the green taxi data table, which is defined inside the `schema.yml` file.
+
+      ```sql
+       {{ config(materialized='view') }}
+
+       select * from {{ source('staging', 'green_tripdata')}}
+       limit 1000
+      ```
+
+      - Create file `schema.yml`. Define sources in the schema.yml model properties file.
+
+      ```yaml
+      version: 2
+
+      sources:
+        - name: staging
+          database: dtc-de-0201
+          schema: trips_data_all
+
+          tables:
+            - name: yellow_tripdata
+            - name: green_tripdata
+      ```
+
+    - `core`: will have the models that we will expose at the end to the BI tool, stakeholders, etc.
+
+The advantage of having the properties in a separate file is that we can easily modify the `schema.yml` file to change the database details and write to different databases without having to modify our `sgt_green_tripdata.sql` file.
+
+Run the model with the dbt run command, either locally or from dbt Cloud.
+
+- Run specific model.
+  > dbt run -m stg_green_tripdata \
+  > or \
+  > dbt run --select stg_green_tripdata
+- Run all the models.
+  > dbt run
+
+### Macros
+
+**_Macros_** are pieces of code in Jinja that can be reused, similar to functions in other languages.
+
+dbt already includes a series of macros like `config()`, `source()` and `ref()`, but custom macros can also be defined.
+
+Macros allow us to add features to SQL that aren't otherwise available, such as:
+
+- Use control structures such as `if` statements or `for` loops in SQL.
+- Use environment variables in our dbt project for production.
+- Operate on the results of one query to generate another query.
+- Abstract snippets of SQL into reusable macros.
+
+Macros are defined in separate `.sql` files which are typically stored in a `macros` directory.
+
+There are 3 kinds of Jinja _delimiters_:
+
+- `{% ... %}` for **_statements_** (control blocks, macro definitions)
+- `{{ ... }}` for **_expressions_** (literals, math, comparisons, logic, macro calls...)
+- `{# ... #}` for comments.
+
+Create a file name `get_payment_type_description.sql` inside `macros` folder. Here's a macro definition example:
+
+```sql
+{# This macro returns the description of the payment_type #}
+
+{% macro get_payment_type_description(payment_type) %}
+
+  case {{ payment_type }}
+    when 1 then 'Credit card'
+    when 2 then 'Cash'
+    when 3 then 'No charge'
+    when 4 then 'Dispute'
+    when 5 then 'Unknown'
+    when 6 then 'Voided trip'
+  end
+
+{% endmacro %}
+```
+
+- The `macro` keyword states that the line is a macro definition. It includes the name of the macro as well as the parameters.
+- The code of the macro itself goes between 2 statement delimiters. The second statement delimiter contains an `endmacro` keyword.
+- In the code, we can access the macro parameters using expression delimiters.
+- The macro returns the **_code_** we've defined rather than a specific value.
+
+Then modify the `stg_green_tripdata.sql` and run dbt again. Here's how we use the macro:
+
+```sql
+select
+  -- ...
+  {{ get_payment_type_description('payment-type') }} as payment_type_description,
+  congestion_surcharge::double precision
+from {{ source('staging','green_tripdata') }}
+where vendorid is not null
+```
+
+- We pass a `payment-type` variable which may be an integer from 1 to 6.
+
+The complied sql code is under the `target > complied > taxi_rides_ny > models > staging` folder. And this is what it would compile to:
+
+```sql
+select
+  case payment_type
+    when 1 then 'Credit card'
+    when 2 then 'Cash'
+    when 3 then 'No charge'
+    when 4 then 'Dispute'
+    when 5 then 'Unknown'
+    when 6 then 'Voided trip'
+  end as payment_type_description,
+  congestion_surcharge::double precision
+from {{ source('staging','green_tripdata') }}
+where vendorid is not null
+```
+
+- The macro is replaced by the code contained within the macro definition as well as any variables that we may have passed to the macro parameters.
+
+### Packages
+
+Macros can be exported to **_packages_**, similarly to how classes and functions can be exported to libraries in other languages. Packages contain standalone dbt projects with models and macros that tackle a specific problem area.
+
+When you add a package to your project, the package's models and macros become part of your own project. A list of useful packages can be found in the [dbt package hub](https://hub.getdbt.com/).
+
+To use a package, you must first create a `packages.yml` file in the root of your work directory. Here's an example:
+
+```yaml
+packages:
+  - package: dbt-labs/dbt_utils
+    version: 0.8.0
+```
+
+After declaring your packages, you need to install them by running the command either locally or on dbt Cloud. After install the package, under folder `dtb_packages`, there will be folder `dtb_utils`.
+
+> dbt deps
+
+You may access macros inside a package in a similar way to how Python access class methods:
+
+Modify the model `stg_green_tripdata.sql` again.
+
+```sql
+select
+  {{ dbt_utils.surrogate_key(['vendorid', 'lpep_pickup_datetime']) }} as tripid,
+  cast(vendorid as integer) as vendorid,
+  -- ...
+```
+
+- The `surrogate_key()` macro generates a hashed [surrogate key](https://www.geeksforgeeks.org/surrogate-key-in-dbms/) with the specified fields in the arguments.
+
+### Variables
+
+Like most other programming languages, **_variables_** can be defined and used across our project.
+
+Variables can be defined in 2 different ways:
+
+- 1st: Under the `vars` keyword inside `dbt_project.yml`.
+  ```yaml
+  vars:
+    payment_type_values: [1, 2, 3, 4, 5, 6]
+  ```
+- 2nd: On command line, add arguments when building or running your project.
+  ```sh
+  dbt build --m <your-model.sql> --var 'is_test_run: false'
+  ```
+
+Variables can be used with the `{{ var('...') }}` macro. For example, modify the model `stg_green_tripdata.sql` again:
+
+```sql
+-- ...
+where vendorid is not null
+-- dbt build -m <model.sql> --var 'is_test_run: false'
+{% if var('is_test_run', default=true) %}
+  limit 100
+{% endif %}
+```
+
+- In this example, the default value for `is_test_run` is `true`; in the absence of a variable definition either on the `dbt_project.yml` file or when running the project, then `is_test_run` would be `true`.
+- Since we passed the value `false` when runnning `dbt build`, then the `if` statement would evaluate to `false` and the code within would not run.
+
+### Create the same `stg_yellow_tripdata.sql` and run the command `dbt run` to execute both models.
+
+### Creating and using `dbt seed`
+
+- `dbt seed` is meant to use with small files that the data is not changed often.
+- Create `taxi_zone_lookup.csv` file under `seeds` folder and copy paste the data into this file.
+- Run this command in order to create the table in the BigQuery database with the data type will be automatically assigned.
+  > dbt seed
+- If you want to specific the data type, we can define it in `dbt_project.yml`
+
+  ```yaml
+  seeds:
+    taxi_rides_ny:
+      taxi_zone_lookup:
+        +column_types:
+          locationid: numeric
+  ```
+
+- If the table is already existed and `dbt seed` command is run again, then the data will be `appended` into the table. In order to drop & create the whole table again, run:
+
+  > dbt seed --full-refresh
+
+- Create `dim_zones.sql` file under `models/core` folder.
+
+  The models we've created in the staging area are for normalizing the fields of both green and yellow taxis. With normalized field names we can now join the 2 together in more complex ways.
+
+  The `ref()` macro is used for referencing any undedrlying tables and views that we've created, so we can reference seeds as well as models using this macro:
+
+  ```sql
+  {{ config(materialized='table') }}
+
+  select
+      locationid,
+      borough,
+      zone,
+      replace(service_zone, 'Boro', 'Green') as service_zone
+  from {{ ref('taxi_zone_lookup') }}
+  ```
+
+  This model references the `taxi_zone_lookup` table created from the taxi zone lookup CSV seed.
+
+- Create file `fact_trips.sql` under `models/core` folder.
+  ```sql
+  with green_data as (
+    select *,
+        'Green' as service_type
+    from {{ ref('stg_green_tripdata') }}
+  ),
+  ```
+  This snippet references the sgt_green_tripdata model that we've created before. Since a model outputs a table/view, we can use it in the FROM clause of any query.
+
+To run all models without seed, run:
+
+> dbt run
+
+> Note: running `dbt run` will run all models but NOT the seeds. The `dbt build` can be used instead to run all seeds and models as well as tests, which we will cover later. Additionally, running `dbt run --select my_model` will only run the model itself, but running `dbt run --select +my_model` will run the model as well as all of its dependencies.
