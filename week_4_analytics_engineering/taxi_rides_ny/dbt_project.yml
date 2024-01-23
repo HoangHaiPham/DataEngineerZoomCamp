@@ -41,6 +41,10 @@ models:
     example:
       +materialized: table
 
+vars:
+  is_test_run: true
+  payment_type_values: [1, 2, 3, 4, 5, 6]
+
 seeds:
   taxi_rides_ny:
     taxi_zone_lookup:
