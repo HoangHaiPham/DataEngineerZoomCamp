@@ -33,6 +33,10 @@ _Note: If you recieve an error stating "Permission denied while globbing file pa
   - [Packages](#packages)
   - [Variables](#variables)
   - [Creating and using dbt seed](#creating-and-using-dbt-seed)
+- [DE Zoomcamp 4.3.2 - Testing and Documenting the Project](#de-zoomcamp-432---testing-and-documenting-the-project)
+  - [Testing](#testing)
+  - [Documentation](#documentation)
+  - [Practice](#practice)
 
 # [DE Zoomcamp 4.1.1 - Analytics Engineering Basics](https://www.youtube.com/watch?v=uF76d5EmdtU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=35)
 
@@ -468,7 +472,7 @@ Variables can be defined in 2 different ways:
   ```
 - 2nd: On command line, add arguments when building or running your project.
   ```sh
-  dbt build --m <your-model.sql> --var 'is_test_run: false'
+  dbt build --m <your-model.sql> --vars '{"is_test_run": false}'
   ```
 
 Variables can be used with the `{{ var('...') }}` macro. For example, modify the model `stg_green_tripdata.sql` again:
@@ -476,7 +480,7 @@ Variables can be used with the `{{ var('...') }}` macro. For example, modify the
 ```sql
 -- ...
 where vendorid is not null
--- dbt build -m <model.sql> --var 'is_test_run: false'
+-- dbt build -m <model.sql> --vars '{"is_test_run": false}'
 {% if var('is_test_run', default=true) %}
   limit 100
 {% endif %}
@@ -484,6 +488,13 @@ where vendorid is not null
 
 - In this example, the default value for `is_test_run` is `true`; in the absence of a variable definition either on the `dbt_project.yml` file or when running the project, then `is_test_run` would be `true`.
 - Since we passed the value `false` when runnning `dbt build`, then the `if` statement would evaluate to `false` and the code within would not run.
+
+`dbt_project.yml` file:
+
+```yaml
+vars:
+  is_test_run: true
+```
 
 ### Create the same `stg_yellow_tripdata.sql` and run the command `dbt run` to execute both models.
 
@@ -541,3 +552,132 @@ To run all models without seed, run:
 > dbt run
 
 > Note: running `dbt run` will run all models but NOT the seeds. The `dbt build` can be used instead to run all seeds and models as well as tests, which we will cover later. Additionally, running `dbt run --select my_model` will only run the model itself, but running `dbt run --select +my_model` will run the model as well as all of its dependencies.
+
+# [DE Zoomcamp 4.3.2 - Testing and Documenting the Project](https://www.youtube.com/watch?v=UishFmq1hLM&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=29)
+
+Testing and documenting are not required steps to successfully run models, but they are expected in any professional setting.
+
+### Testing
+
+Tests in dbt are **_assumptions_** that we make about our data.
+
+In dbt, tests are essentially a `SELECT` query that will return the amount of records that fail because they do not follow the assumption defined by the test.
+
+Tests are defined on a column in the model YAML files (like the `schema.yml` file we defined before). dbt provides a few predefined tests to check column values but custom tests can also be created as queries. Here's an example test:
+
+```yaml
+models:
+  - name: stg_yellow_tripdata
+    description: Trips made by New York City's iconic yellow taxis.
+    columns:
+      - name: tripid
+      description: Primary key for this table, generated with a concatenation of vendorid+pickup_datetime
+        tests:
+          - unique:
+              severity: warn
+          - not_null:
+              severity: warn
+```
+
+- The tests are defined for a column in a specific table for a specific model.
+- There are 2 tests in this YAML file: `unique` and `not_null`. Both are predefined by dbt.
+- `unique` checks whether all the values in the `tripid` column are unique.
+- `not_null` checks whether all the values in the `tripid` column are not null.
+- Both tests will return a warning in the command line interface if they detect an error.
+
+Here's wwhat the `not_null` will compile to in SQL query form:
+
+```sql
+select *
+from "my_project"."dbt_dev"."stg_yellow_tripdata"
+where tripid is null
+```
+
+Run tests command.
+
+> dbt test
+
+### Documentation
+
+dbt also provides a way to generate documentation for your dbt project and render it as a website.
+
+You may have noticed in the previous code block that a `description:` field can be added to the YAML field. dbt will make use of these fields to gather info.
+
+The dbt generated docs will include the following:
+
+- Information about the project:
+  - Model code (both from the .sql files and compiled code)
+  - Model dependencies
+  - Sources
+  - Auto generated DAGs from the `ref()` and `source()` macros
+  - Descriptions from the .yml files and tests
+- Information about the Data Warehouse (`information_schema`):
+  - Column names and data types
+  - Table stats like size and rows
+
+dbt docs can be generated on the cloud or locally with `dbt docs generate`, and can be hosted in dbt Cloud as well or on any other webserver with `dbt docs serve`.
+
+### Practice
+
+Create a file `dm_monthly_zone_revenue.sql` under `models/core` folder -> Add sql script.
+
+Modify the `schema.yml` under `models/staging` folder. Add the section `models` into the schema file, this section is not mandatory but it is encouraged to do.
+
+```yaml
+models:
+  - name: stg_green_tripdata
+    description: ...
+    columns:
+      - name: tripid
+        description: ...
+        tests:
+          - unique:
+              severity: warn
+          - not_null:
+              serviry: warn
+      ...
+```
+
+Once this test is running in the terminal, if it fails, should dbt still keep running everthing else or it stop entirely? A `warn` means that at the end it's going to show in the terminal the warning but it still keep running everthing.
+
+Modify the file `dbt_project.yml` to add the variable that watns to use.
+
+```yaml
+vars:
+  is_test_run: true
+  payment_type_values: [1, 2, 3, 4, 5, 6]
+```
+
+Then run:
+
+> dbt test
+
+There will be a warning shows that the `tripid` column is not unique. We have to go to both `stg_green_tripdata` & `stg_yellow_tripdata` to modify the the script.
+
+```sql
+{{ config(materialized = 'view') }}
+with tripdata as
+(
+  select *,
+    row_number() over(partition by vendorid, lpep_pickup_datetime) as rn
+  from {{ source('staging', 'green_tripdata') }}
+  where vendorid is not null
+)
+
+-- ...
+from tripdata
+where rn = 1
+--- ...
+```
+
+Then run:
+
+> dbt build --vars '{"is_test_run": false}' \
+> or \
+> dbt run --vars '{"is_test_run": false}'
+
+> dbt test
+
+If all the tests are passed -> Good.
+
+Then create more `schema.yml` file for documentation under folder `models/core`, `macros`, `seeds`.
