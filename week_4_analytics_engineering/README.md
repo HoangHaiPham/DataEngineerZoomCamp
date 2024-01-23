@@ -37,6 +37,9 @@ _Note: If you recieve an error stating "Permission denied while globbing file pa
   - [Testing](#testing)
   - [Documentation](#documentation)
   - [Practice](#practice)
+- [DE Zoomcamp 4.4.1 - Deployment Using dbt Cloud (Alternative A)](#de-zoomcamp-441---deployment-using-dbt-cloud-alternative-a)
+  - [What is deployment?](#what-is-deployment)
+  - [Running a dbt project in production](#running-a-dbt-project-in-production)
 
 # [DE Zoomcamp 4.1.1 - Analytics Engineering Basics](https://www.youtube.com/watch?v=uF76d5EmdtU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=35)
 
@@ -681,3 +684,76 @@ Then run:
 If all the tests are passed -> Good.
 
 Then create more `schema.yml` file for documentation under folder `models/core`, `macros`, `seeds`.
+
+# [DE Zoomcamp 4.4.1 - Deployment Using dbt Cloud (Alternative A)](https://www.youtube.com/watch?v=rjf6yZNGX8I&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=46)
+
+### What is deployment?
+
+If you remember from the beginning of this lesson, `the goal of dbt` is to introduce good software engineering practices by defining a deployment workflow. So far we've seen the Development, Test And Document stages of the workflow. We will now cover deployment.
+
+![development-deployment](./images/development-deployment.png)
+
+- Process of running the models we created in our development environment in a production environment.
+- Development and later deployment allows us to continue building models & testing them without affecting our production environment.
+- A deployment environment will normally have a different schema in our data warehouse and ideally a different user.
+- A development - deployment workflow will be something like:
+  - Develop in a user branch.
+  - Open a PR to merge into main branch.
+  - Merge the user branch to the main branch.
+  - Run the new models in the production environment using the main branch.
+  - Schedule the models.
+
+### Running a dbt project in production.
+
+dbt projects are usually deployed in the form of **_jobs_**:
+
+- A **_job_** is a collection of _commands_ such as `build` or `test`. A job may contain one or more commands.
+- Jobs can be triggered manually or on schedule.
+  - dbt Cloud has a scheduler which can run jobs for us, but other tools such as Airflow or cron can be used as well.
+- Each job will keep a log of the runs over time, and each run will keep the logs for each command.
+- A job may also be used to generate documentation, which may be viewed under the run information.
+- If the `dbt source freshness` command was run, the results can also be viewed at the end of a job.
+
+### What is Continuous Integration (CI)?
+
+- CI is the practice of regularly merge development branches into a central repository, after which automated builds and tests are run.
+- The goal is to reduce adding bugs to the production code and maintain a more stable project.
+- dbt allows us to enable CI on pull request.
+- Enabled via webhooks from GitHub or GitLab.
+- When a PR is ready to be merged, a webhooks is received in dbt Cloud that will enqueue a new run of the specified job.
+- The run of the CI job will be against a temporary schema.
+- If the job finishes successfully, the PR can be merged into the main branch, but if it fails the merge will not happen.
+- CI jobs can also be scheduled with the dbt Cloud scheduler, Airflow, cron and a number of additional tools.
+
+### Deployment using dbt Cloud
+
+In dbt Cloud, you might have noticed that after the first commit, the `master` branch becomes read-only and forces us to create a new branch if we want to keep developing. dbt Cloud does this to enforce us to open PRs for CI purposes rather than allowing merging to `master` straight away.
+
+In order to properly establish a deployment workflow, we must define **_environments_** within dbt Cloud. In the `navigation bar > Deploy > Environments`, you will see that a default `Development` environment is already generated, which is the one we've been using so far.
+
+We will create a new `Production` environment of type `Deployment` using the latest stable dbt version (`v1.7` at the time of writing these notes). By default, the environment will use the `master` branch of the repo but you may change it for more complex workflows. If you used the JSON credentials when setting up dbt Cloud then most of the deployment credentials should already be set up except for the dataset. For this example, we will use the `production` dataset (make sure that the `production` dataset/schema exists in your BigQuery project).
+
+Click `+ Create environment` > Fill in the fileds > Save.
+
+![dbt-deployment](./images/dbt-deployment.png)
+
+The dbt Cloud scheduler is available in the `Deploy > Jobs` menu in the navigation bar.
+
+Click `+ Create job > Deploy job`
+
+We will create a new job with name `dbt build` using the `Production` environment, we will check the `Generate docs?` checkbox. Add the following commands:
+
+1. `dbt seed`
+2. `dbt run`
+3. `dbt test`
+
+In the `Schedule` tab at the bottom we will check the `Run on schedule?` checkbox with a timing of `Every day` and `every 6 hours`.
+
+![dbt-deploy-job-1](./images/dbt-deploy-job-1.png)
+![dbt-deploy-job-2](./images/dbt-deploy-job-2.png)
+
+Save the job. You will be shown the job's run history screen which contains a `Run now` buttom that allows us to trigger the job manually; do so to check that the job runs successfully.
+
+You can access the run and check the current state of it as well as the logs. After the run is finished, you will see a `View Documentation` button at the top; clicking on it will open a new browser window/tab with the generated docs.
+
+Under `Account settings > Projects`, you may edit the project in order to modify the `Documentation` field under `Artifacts`, select `dbt build` project; you should see a drop down menu which should contain the job we created which generates the docs. After saving the changes and reloading the dbt Cloud website, you should now have a `Documentation` section in the sidebar.
