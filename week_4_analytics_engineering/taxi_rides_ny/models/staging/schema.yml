@@ -8,7 +8,7 @@ sources:
     tables:
       - name: yellow_tripdata
       - name: green_tripdata
-      - name: fhv_data_partitioned_clustered
+      - name: fhv_data_partitioned_clustered     
 
 models:
   - name: stg_green_tripdata
@@ -101,7 +101,7 @@ models:
         description: Total amount of all tolls paid in trip.
       - name: Total_amount
         description: The total amount charged to passengers. Does not include cash tips.
-
+  
   - name: stg_yellow_tripdata
     description: >
       Trips made by New York City's iconic yellow taxis. 
@@ -193,14 +193,14 @@ models:
         description: Total amount of all tolls paid in trip.
       - name: Total_amount 
         description: The total amount charged to passengers. Does not include cash tips.
-
-  - name: fhv_data_partitioned_clustered
+  
+  - name: stg_fhv_tripdata
     description: >
       FHV trip records include fields capturing the dispatching base license number and 
       the pick-up date, time, and taxi zone location ID.
     columns:
       - name: tripid
-        description: Primary key for this table, generated with a concatenation of dispatching_base_num + pickup_datetime
+        description: Primary key for this table, generated with a concatenation of dispatching_base_num+pickup_datetime
         tests:
           - unique:
               severity: warn
@@ -230,4 +230,3 @@ models:
         description: trip info
       - name: affiliated_base_number
         description: Affiliated base number.
-      
