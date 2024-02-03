@@ -190,7 +190,7 @@ with DAG(
   default_args=default_args,
 ) as create_table:
   EXTERNAL_TABLE_NAME = f"{BIGQUERY_DATASET}.external_fhv_data_airflow"
-  PARTITIONED_CLUSTERED_TABLE_NAME = f"{BIGQUERY_DATASET}.fhv_data_partitioned_clusted_airflow"
+  PARTITIONED_CLUSTERED_TABLE_NAME = f"{BIGQUERY_DATASET}.fhv_data_partitioned_clustered_airflow"
   LOCATION = "europe-west3"
   
   create_external_table = BigQueryCreateExternalTableOperator(
