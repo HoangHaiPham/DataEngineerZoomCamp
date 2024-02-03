@@ -40,6 +40,9 @@ _Note: If you recieve an error stating "Permission denied while globbing file pa
 - [DE Zoomcamp 4.4.1 - Deployment Using dbt Cloud (Alternative A)](#de-zoomcamp-441---deployment-using-dbt-cloud-alternative-a)
   - [What is deployment?](#what-is-deployment)
   - [Running a dbt project in production](#running-a-dbt-project-in-production)
+- [DE Zoomcamp 4.5.1 - Visualising the data with Google Data Studio (Alternative A)](#de-zoomcamp-451---visualising-the-data-with-google-data-studio-alternative-a)
+  - [Locker Studio](#locker-studio)
+  - [Metabase](#metabase)
 
 # [DE Zoomcamp 4.1.1 - Analytics Engineering Basics](https://www.youtube.com/watch?v=uF76d5EmdtU&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=35)
 
@@ -687,6 +690,8 @@ Then create more `schema.yml` file for documentation under folder `models/core`,
 
 # [DE Zoomcamp 4.4.1 - Deployment Using dbt Cloud (Alternative A)](https://www.youtube.com/watch?v=rjf6yZNGX8I&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=46)
 
+For local deployment, watch [DE Zoomcamp 4.4.2 - Deployment Using dbt Locally (Alternative B)](https://www.youtube.com/watch?v=Cs9Od1pcrzM&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
+
 ### What is deployment?
 
 If you remember from the beginning of this lesson, `the goal of dbt` is to introduce good software engineering practices by defining a deployment workflow. So far we've seen the Development, Test And Document stages of the workflow. We will now cover deployment.
@@ -744,7 +749,7 @@ Click `+ Create job > Deploy job`
 We will create a new job with name `dbt build` using the `Production` environment, we will check the `Generate docs?` checkbox. Add the following commands:
 
 1. `dbt seed`
-2. `dbt run`
+2. `dbt run --vars '{"is_test_run": false}'`
 3. `dbt test`
 
 In the `Schedule` tab at the bottom we will check the `Run on schedule?` checkbox with a timing of `Every day` and `every 6 hours`.
@@ -757,3 +762,31 @@ Save the job. You will be shown the job's run history screen which contains a `R
 You can access the run and check the current state of it as well as the logs. After the run is finished, you will see a `View Documentation` button at the top; clicking on it will open a new browser window/tab with the generated docs.
 
 Under `Account settings > Projects`, you may edit the project in order to modify the `Documentation` field under `Artifacts`, select `dbt build` project; you should see a drop down menu which should contain the job we created which generates the docs. After saving the changes and reloading the dbt Cloud website, you should now have a `Documentation` section in the sidebar.
+
+# [DE Zoomcamp 4.5.1 - Visualising the data with Google Data Studio (Alternative A)](https://www.youtube.com/watch?v=39nLTs74A3E&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
+
+After creating our models, transforming the data and deploying the models, we will now **_visualize_** the data.
+
+### Locker Studio
+
+[Locker Studio](https://lookerstudio.google.com/) (LS) is an online tool for converting data into **_reports_** and **_dashboards_**.
+
+Create a by choosing `Data Source -> BigQuery`. After authorizing LS to access BigQuery, we will be able to select our project and datasets. We will connect to our `production.fact_trips` schema.
+
+After creating the data source, a new window will open with the _dimensions_ (table columns), the type of each dimension and the default aggregation for each dimension. You may change the default aggregation as you see fit for each dimension.
+
+A `Report` is essentially an empty canvas which can be filled with can be filled with different widgets. The widgets that display data are called `Charts`; widgets that modify the behavior of other charts are called `Controls`. There are additional widgets for text, images and other elements to help improve the looks and readability of the report.
+
+We will now create a new report by clicking on the `Create report` button at the top of the Data Source window. A new window will open which will allow us to design our own custom report. An example table is already provided but you may delete it because we will be creating our own from scratch.
+
+The dashboard will be something like this:
+
+![dashboard](./images/dashboard.png)
+
+### Metabase
+
+LS cannot be used for local databases. If you're developing `locally`, you may use the `Open Source Edition` of `Metabase`.
+
+You may run Metabase on Docker or running a local JAR file. The main UI is a website for which a username and a database connection must be provided.
+
+For local, watch [DE Zoomcamp 4.5.2 - Visualising the data with Metabase (Alternative B)](https://www.youtube.com/watch?v=BnLkrA7a6gM&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=50)
