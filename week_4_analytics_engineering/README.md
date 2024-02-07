@@ -14,7 +14,7 @@ We will build a project using dbt and a running data warehouse. By this stage of
 - Green taxi data - Years 2019 and 2020
 - fhv data - Year 2019.
 
-_Note: If you recieve an error stating "Permission denied while globbing file pattern." when attemting to run fact_trips.sql [this video](https://www.youtube.com/watch?v=kL3ZVNL9Y4A) may be helpful in resolving the issue._
+\_Note: If you recieve an error stating "Permission denied while globbing file pattern." when attemting to run fact_trips.sql [this video](https://www.youtube.com/watch?v=kL3ZVNL9Y4A) may be helpful in resolving the issue.
 
 # Table of contents
 
