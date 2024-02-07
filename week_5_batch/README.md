@@ -18,6 +18,9 @@
   - [Types of batch jobs](#types-of-batch-jobs)
   - [Workflow of batch jobs](#workflow-of-batch-jobs)
   - [Pros and cons of batch jobs](#pros-and-cons-of-batch-jobs)
+- [DE Zoomcamp 5.1.2 - Introduction to Spark](#de-zoomcamp-512---introduction-to-spark)
+  - [What is Spark?](#what-is-spark)
+  - [Why do we need Spark?](#why-do-we-need-spark)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -73,3 +76,39 @@ A common workflow for batch jobs may be the following:
   - Delay. Each task of the workflow in the previous section may take a few minutes; assuming the whole workflow takes 20 minutes, we would need to wait those 20 minutes until the data is ready for work.
 
 However, the advantages of `batch jobs` often compensate for its shortcomings, and as a result most companies that deal with data tend to work with batch jobs mos of the time (probably 80% for batch, 20% for stream).
+
+# [DE Zoomcamp 5.1.2 - Introduction to Spark](https://www.youtube.com/watch?v=FhaqbEOuQ8U&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=52)
+
+### What is Spark?
+
+[Apache Spark](https://spark.apache.org/) is an open-source `multi-language` unified analytics `engine` for large-scale data processing.
+
+Spark is an `engine` because it _processes data_.
+
+Example we have a database/data lake, Spark pulls the data to its machines to its executors -> then it does something with the data -> then outputs it to again data lake/data warehouse -> the processing happens in Spark -> that's why it's an `engine`.
+
+![spark](./images/spark.png)
+
+Spark can be ran in `clusters` with multiple `nodes`, each pulling and transforming data.
+
+Spark is `multi-language` because we can use Java and Scala natively, and there are wrappers for Python, R and other languages.
+
+The wrapper for Python is called [PySpark](https://spark.apache.org/docs/latest/api/python/).
+
+Spark can deal with both `batches` and `streaming data`. The technique for streaming data is seeing a stream of data as a sequence of small batches and then applying similar techniques on them to those used on regular badges. We will cover streaming in detail in the next lesson.
+
+### Why do we need Spark?
+
+Spark is used for transforming data in a Data Lake. Since in Data Lake, you will have a bunch of files, then using SQL is not always easy => then you would go with Spark.
+
+There are tools such as Hive, Presto or Athena (a AWS managed Presto) that allow you to express jobs as SQL queries on Data Lake.
+
+However, there are times where you need to apply more complex manipulation which are very difficult or even impossible to express with SQL (such as ML models); in those instances, Spark is the tool to use.
+
+![when-to-use-spark-1](./images/when-to-use-spark-1.png)
+
+A typical workflow may combine both tools. Here's an example of a workflow involving Machine Learning:
+
+![when-to-use-spark-2](./images/when-to-use-spark-2.png)
+
+In this scenario, most of the preprocessing would be happening in Athena, so for everything that can be expressed with SQL, it's always a good idea to do so, but for everything else, there's Spark.
