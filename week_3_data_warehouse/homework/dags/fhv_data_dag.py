@@ -184,7 +184,7 @@ donwload_parquetize_upload_dag(
   Create an External and BigQuery Table
 """
 with DAG(
-  dag_id="create_table",
+  dag_id="fhv_create_table",
   start_date=datetime.datetime(2020, 1, 1),
   schedule_interval="@once",
   default_args=default_args,

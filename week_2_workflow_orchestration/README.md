@@ -163,7 +163,7 @@ All these services allow you to run Airflow with CeleryExecutor.
 
 ```bash
 cd ~ && mkdir -p ~/.google/credentials/
-cp /Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json ~/.google/credentials/google_credentials.json
+cp /Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/gcp_credentials/hpham-dtc-de-4fb77b95f342.json ~/.google/credentials/google_credentials.json
 
 ```
 
@@ -658,7 +658,7 @@ Start from scratch:
 12. Once you're finished, remember to use
 
     - For Postgres container:
-      > ocker-compose -f docker-compose-week1.yaml down
+      > docker-compose -f docker-compose-week1.yaml down
     - For Airflow container:
 
       > docker-compose down
