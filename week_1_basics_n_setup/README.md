@@ -511,7 +511,7 @@ For this course, use a free version (upto 300 Euro credits).
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="<path/to/your/service-account-authkeys>.json"
 
-export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json"
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/gcp_credentials/hpham-dtc-de-4fb77b95f342.json"
 
 # Check gcloud version
 gcloud -v
@@ -550,7 +550,7 @@ gcloud auth application-default login
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="<payh/to/your/service-account-authkeys>.json"
 
-export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/dtc-de-0201-8eee0a0ef1ac.json"
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/hoang.hai.pham/Documents/code/Tutorials/DataEngineer/data/gcp_credentials/hpham-dtc-de-4fb77b95f342.json"
 ```
 
 # [DE Zoomcamp 1.3.2 - Creating GCP Infrastructure with Terraform](https://www.youtube.com/watch?v=dNkEgO-CExg&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=13)
