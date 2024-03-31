@@ -24,6 +24,11 @@
 - [DE Zoomcamp 5.2.1 - (Optional) Installing Spark on Linux](#de-zoomcamp-521---optional-installing-spark-on-linux)
 - [DE Zoomcamp 5.3.1 - First Look at Spark/PySpark](#de-zoomcamp-531---first-look-at-sparkpyspark)
   - [Reading CSV files & construct data type](#reading-csv-files--construct-data-type)
+  - [Partitions](#partitions)
+- [DE Zoomcamp 5.3.2 - Spark DataFrames](#de-zoomcamp-532---spark-dataframes)
+  - [Actions vs Transformations](#actions-vs-transformations)
+  - [Functions in Spark](#functions-in-spark)
+  - [User Defined Functions (UDFs)](#user-defined-functions-udfs)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -301,3 +306,122 @@ df.write.parquet('../../../data/fhvhv_partitions/2021/01', mode='overwrite')
 ```
 
 The opposite of partitioning (joining multiple partitions into a single partition) is called `coalescing`.
+
+# [DE Zoomcamp 5.3.2 - Spark DataFrames](https://www.youtube.com/watch?v=ti3aC1m3rE8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=55)
+
+Spark works with `dataframes`.
+
+We can create a dataframe from the parquet files we created in the previous section:
+
+```python
+df = spark.read.parquet('../../../data/fhvhv_partitions/2021/01')
+```
+
+Unlike CSV files, parquet files contain the schema of the dataset, so there is no need to specify a schema like we previously did when reading the CSV file. You can check the schema like this:
+
+```python
+df.printSchema()
+```
+
+(One of the reasons why parquet files are smaller than CSV files is because they store the data according to the datatypes, so integer values will take less space than long or string values.)
+
+There are many Pandas-like operations that we can do on Spark dataframes, such as:
+
+- Column selection - returns a dataframe with only the specified columns.
+  ```python
+  new_df = df.select('pickup_datetime', 'dropoff_datetime', 'PULocationID', 'DOLocationID')
+  ```
+- Filtering by value - returns a dataframe whose records match the condition stated in the filter.
+  ```python
+  new_df = df.select('pickup_datetime', 'dropoff_datetime', 'PULocationID', 'DOLocationID').filter(df.hvfhs_license_num == 'HV0003')
+  ```
+- And many more. The official Spark documentation website contains a [quick guide for dataframes](https://spark.apache.org/docs/latest/api/python/getting_started/quickstart_df.html).
+
+### Actions vs Transformations
+
+Some Spark methods are "lazy", meaning that they are not executed right away. You can test this with the last instructions we run in the previous section: after running them, the Spark UI will not show any new jobs. However, running `df.show()` right after will execute right away and display the contents of the dataframe; the Spark UI will also show a new job.
+
+These lazy commands are called `transformations` and the eager commands are called `actions`. Computations only happen when `actions are triggered`.
+
+```python
+df.select(...).filter(...).show()
+```
+
+Both `select()` and `filter()` are _transformations_, but `show()` is an _action_. The whole instruction gets evaluated only when the `show()` action is triggered.
+
+![actions-vs-transformations](./images/actions-vs-transformations.png)
+
+- List of `Transformations` (lazy):
+
+  - Selecting columns
+  - Filtering
+  - Joins
+  - Group by
+  - Partitions
+  - ...
+
+- List of `Actions` - eager (executed immediately):
+
+  - Show, take, head
+  - Write, read
+  - ...
+
+### Functions in Spark
+
+Besides the SQL and Pandas-like commands we've seen so far, Spark provides additional built-in functions that allow for more complex data manipulation. By convention, these functions are imported as follows:
+
+```python
+from pyspark.sql import functions as F
+```
+
+Here's an example of built-in function usage:
+
+```python
+df \
+    .withColumn('pickup_date', F.to_date(df.pickup_datetime)) \
+    .withColumn('dropoff_date', F.to_date(df.dropoff_datetime)) \
+    .select('pickup_date', 'dropoff_date', 'PULocationID', 'DOLocationID') \
+    .show()
+```
+
+- `withColumn()` is a `transformation` that adds a new column to the dataframe.
+  - **_IMPORTANT_**: adding a new column with the same name as a previously existing column will overwrite the existing column!
+- `select()` is another `transformation` that selects the stated columns.
+- `F.to_date()` is a built-in Spark function that converts a timestamp to date format (year, month and day only, no hour and minute).
+
+A list of built-in functions is available [in the official Spark documentation page](https://spark.apache.org/docs/latest/api/sql/index.html).
+
+### User Defined Functions (UDFs)
+
+Besides these built-in functions, Spark allows us to create **_User Defined Functions_** (UDFs) with custom behavior for those instances where creating SQL queries for that behaviour becomes difficult both to manage and test.
+
+UDFs are regular functions which are then passed as parameters to a special builder. Let's create one:
+
+```python
+# A crazy function that changes values when they're divisible by 7 or 3
+def crazy_stuff(base_num):
+    num = int(base_num[1:])
+    if num % 7 == 0:
+        return f's/{num:03x}'
+    elif num % 3 == 0:
+        return f'a/{num:03x}'
+    else:
+        return f'e/{num:03x}'
+
+# Creating the actual UDF
+crazy_stuff_udf = F.udf(crazy_stuff, returnType=types.StringType())
+```
+
+- `F.udf()` takes a function (`crazy_stuff()` in this example) as parameter as well as a return type for the function (a string in our example).
+- While `crazy_stuff()` is obviously non-sensical, UDFs are handy for things such as ML and other complex operations for which SQL isn't suitable or desirable. Python code is also easier to test than SQL.
+
+We can then use our UDF in transformations just like built-in functions:
+
+```python
+df \
+    .withColumn('pickup_date', F.to_date(df.pickup_datetime)) \
+    .withColumn('dropoff_date', F.to_date(df.dropoff_datetime)) \
+    .withColumn('base_id', crazy_stuff_udf(df.dispatching_base_num)) \
+    .select('base_id', 'pickup_date', 'dropoff_date', 'PULocationID', 'DOLocationID') \
+    .show()
+```
