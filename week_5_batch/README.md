@@ -33,7 +33,10 @@
 - [DE Zoomcamp 5.3.4 - SQL with Spark](#de-zoomcamp-534---sql-with-spark)
 - [DE Zoomcamp 5.4.1 - Anatomy of a Spark Cluster](#de-zoomcamp-541---anatomy-of-a-spark-cluster)
   - [Spark cluster is IN CONTRAST to Hadoop/HDFS](#spark-cluster-is-in-contrast-to-hadoophdfs)
-- [DE Zoomcamp 5.4.2 - GroupBy in Spakr](#de-zoomcamp-542---groupby-in-spakr)
+- [DE Zoomcamp 5.4.2 - GroupBy in Spark](#de-zoomcamp-542---groupby-in-spark)
+  - [Explain what is Spark doing when execute a query](#explain-what-is-spark-doing-when-execute-a-query)
+  - [STAGE #1 OF GROUPBY](#stage-1-of-groupby)
+  - [STAGE #2 OF GROUPBY (RESHUFFLING)](#stage-2-of-groupby-reshuffling)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -729,7 +732,7 @@ However, nowadays we have S3, GCP, Azure or other cloud providers. Cloud provide
 
 Therefore, the executors now instead of keeping the data there, they can just pull the data from cloud storage bucket and process this and then save the results back to the data lake. => Hadoop/HDFS has fallen out of fashion.
 
-# [DE Zoomcamp 5.4.2 - GroupBy in Spakr](https://www.youtube.com/watch?v=9qrDsY_2COo&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=59)
+# [DE Zoomcamp 5.4.2 - GroupBy in Spark](https://www.youtube.com/watch?v=9qrDsY_2COo&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=59)
 
 Let's do the following query, [script 07_groupby_join.ipynb](./code/07_groupby_join.ipynb):
 
