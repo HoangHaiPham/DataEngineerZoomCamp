@@ -31,6 +31,9 @@
   - [User Defined Functions (UDFs)](#user-defined-functions-udfs)
 - [DE Zoomcamp 5.3.3 - (Optional) Preparing Yellow and Green Taxi Data](#de-zoomcamp-533---optional-preparing-yellow-and-green-taxi-data)
 - [DE Zoomcamp 5.3.4 - SQL with Spark](#de-zoomcamp-534---sql-with-spark)
+- [DE Zoomcamp 5.4.1 - Anatomy of a Spark Cluster](#de-zoomcamp-541---anatomy-of-a-spark-cluster)
+  - [Spark cluster is IN CONTRAST to Hadoop/HDFS](#spark-cluster-is-in-contrast-to-hadoophdfs)
+- [DE Zoomcamp 5.4.2 - GroupBy in Spakr](#de-zoomcamp-542---groupby-in-spakr)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -699,3 +702,87 @@ df_result.coalesce(1).write.parquet('../../../data/report/revenue', mode='overwr
 ```
 
 - This reduces the amount of partitions to just 1 file.
+
+# [DE Zoomcamp 5.4.1 - Anatomy of a Spark Cluster](https://www.youtube.com/watch?v=68CipcZt7ZA&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=58)
+
+Until now, we've used a `local cluster` to run our Spark code, but Spark clusters often contain multiple computers that behave as executors.
+
+Spark clusters are managed by a `master`, which behaves similarly to an entry point of a Kubernetes cluster. A `driver` (an Airflow DAG, a computer running a local script, etc.) that wants to execute a Spark job will send the job to the master, which in turn will divide the work among the cluster's executors. If any executor fails and becomes offline for any reason, the master will reassign the task to another executor.
+
+![spark-cluster](./images/spark-cluster.png)
+
+Each executor will fetch a `dataframe partition` stored in a `Data Lake` (usually S3, GCS or a similar cloud provider), do something with it and then store it somewhere, which could be the same Data Lake or somewhere else. If there are more partitions than executors, executors will keep fetching partitions until every single one has been processed.
+
+**_SUMMERIZE_**:
+
+- A driver (operator in Airflow has a task does spark-submit, laptop, or something can submit a the job) submits a job to spark master.
+- Master is the thing that coordinates everything. Executors are the machines that do actual computations. Master keeps track of which machines are healthy and if some machines become unhealthy, it reassign the work.
+- The data is kept in cloud storage, data is read from cloud storage and written the results back to cloud storage
+
+### Spark cluster is IN CONTRAST to [Hadoop/HDFS](https://hadoop.apache.org/)
+
+Hadoop/HDFS is another data analytics engine, which is pretty popular. Executors locally store the data they process. Partitions in Hadoop are duplicated across several executors for redundancy, in case an executor fails for whatever reason (Hadoop is meant for clusters made of commodity hardware computers). The idea in Hadoop/HDFS is that instead of downloading data to the executors, only the code is downloaded to the executors which contain the data already.
+
+In the past, this makes a lot of sense since the data is quite large (EX: the file is 100 MB, while the code is only 10 MB) -> make sens to send smaller thing instead of pulling a lot of data to the executors.
+
+However, nowadays we have S3, GCP, Azure or other cloud providers. Cloud provider services & spark cluster are usually live in the same data center -> downloading 100 MB to an executor is very fast, it's `not` significantly slower compared to reading data from the local disk. Data locality has become less important as storage and data transfer costs have dramatically decreased and nowadays it's feasible to separate storage from computation.
+
+Therefore, the executors now instead of keeping the data there, they can just pull the data from cloud storage bucket and process this and then save the results back to the data lake. => Hadoop/HDFS has fallen out of fashion.
+
+# [DE Zoomcamp 5.4.2 - GroupBy in Spakr](https://www.youtube.com/watch?v=9qrDsY_2COo&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=59)
+
+Let's do the following query, [script 07_groupby_join.ipynb](./code/07_groupby_join.ipynb):
+
+```python
+df_green_revenue = spark.sql("""
+  SELECT
+    -- Reveneue grouping
+    date_trunc('hour', lpep_pickup_datetime) AS hour,
+    PULocationID AS zone,
+
+    SUM(total_amount) AS amount,
+    COUNT(1) AS number_records
+  FROM green
+  WHERE lpep_pickup_datetime >= '2020-01-01 00:00:00'
+  GROUP BY 1, 2
+  ORDER BY 1, 2
+""")
+```
+
+### Explain what is Spark doing when execute a query
+
+This query will output the total revenue and amount of trips per hour per zone. We need to group by hour and zones in order to do this.
+
+The executor first does the filtering to discard data in the past, after that it does the `initial group by`. Why `initital`? Because one executor can only process one partition at a time.
+
+Since the data is split along partitions, it's likely that we will need to group data which is in separate partitions, but executors only deal with individual partitions. Spark solves this issue by separating the grouping in 2 stages:
+
+### STAGE #1 OF GROUPBY
+
+In the first stage, each executor groups the results in the partition they're working on and outputs the results to a temporary partition. These temporary partitions are the `intermediate results`.
+
+![spark-groupby-stage-1](./images/spark-groupby-stage-1.png)
+
+### STAGE #2 OF GROUPBY (RESHUFFLING)
+
+The second stage `shuffles` the data: Spark will put all records with the `same keys` (in this case, the `GROUP BY` keys which are hour and zone) in the `same partition`. The algorithm to do this is called `external merge sort`. Once the shuffling has finished, we can once again apply the `GROUP BY` to these new partitions and `reduce` the records to the **_final output_**.
+
+- Note that the shuffled partitions may contain more than one key, but all records belonging to a key should end up in the same partition.
+
+![spark-groupby-stage-2](./images/spark-groupby-stage-2.png)
+
+Running the query should display the following DAG in the Spark UI:
+
+![spark-dag](./images/spark-dag.png)
+
+- The `Exchange` task refers to the shuffling.
+
+If we were to add sorting to the query (adding a `ORDER BY 1,2` at the end), Spark would perform a very similar operation to `GROUP BY` after grouping the data. The resulting DAG would look liked this:
+
+![spark-dag-with-orderby](./images/spark-dag-with-orderby.png)
+
+By default, Spark will repartition the dataframe to 200 partitions after shuffling data. For the kind of data we're dealing with in this example this could be counterproductive because of the small size of each partition/file, but for larger datasets this is fine.
+
+Shuffling is an `expensive operation`, so it's in our best interest to reduce the amount of data to shuffle when querying as least as possible.
+
+- Keep in mind that repartitioning also involves shuffling data.
