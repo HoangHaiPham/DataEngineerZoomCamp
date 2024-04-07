@@ -37,6 +37,9 @@
   - [Explain what is Spark doing when execute a query](#explain-what-is-spark-doing-when-execute-a-query)
   - [STAGE #1 OF GROUPBY](#stage-1-of-groupby)
   - [STAGE #2 OF GROUPBY (RESHUFFLING)](#stage-2-of-groupby-reshuffling)
+- [DE Zoomcamp 5.4.3 - Join in Spark](#de-zoomcamp-543---join-in-spark)
+  - [Joining 2 large tables](#joining-2-large-tables)
+  - [Joining a large table and a small table](#joining-a-large-table-and-a-small-table)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -789,3 +792,78 @@ By default, Spark will repartition the dataframe to 200 partitions after shuffli
 Shuffling is an `expensive operation`, so it's in our best interest to reduce the amount of data to shuffle when querying as least as possible.
 
 - Keep in mind that repartitioning also involves shuffling data.
+
+# [DE Zoomcamp 5.4.3 - Join in Spark](https://www.youtube.com/watch?v=lu7TrqAWuH4&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=60)
+
+Joining tables in Spark is implemented in a similar way to `GROUP BY` and `ORDER BY`, but there are 2 distinct cases:
+
+- Joining 2 large tables.
+- Joining a large table and a small table.
+
+### Joining 2 large tables
+
+Let's assume that we've created a `df_yellow_revenue` dataframe in the same manner as the `df_green_revenue` we created in the previous section. We want to join both tables, so we will create temporary dataframes with changed column names so that we can tell apart data from each original table:
+
+```python
+df_green_revenue_tmp = df_green_revenue \
+    .withColumnRenamed('amount', 'green_amount') \
+    .withColumnRenamed('number_records', 'green_number_records')
+
+df_yellow_revenue_tmp = df_yellow_revenue \
+    .withColumnRenamed('amount', 'yellow_amount') \
+    .withColumnRenamed('number_records', 'yellow_number_records')
+```
+
+- Both of these queries are `transformations`; Spark doesn't actually do anything when we run them.
+
+We will now perform an [outer join](https://dataschool.com/how-to-teach-people-sql/sql-join-types-explained-visually/) so that we can display the amount of trips and revenue per hour per zone for green and yellow taxis at the same time regardless of whether the hour/zone combo had one type of taxi trips or the other:
+
+```python
+df_join = df_green_revenue_tmp.join(df_yellow_revenue_tmp, on=['hour', 'zone'], how='outer')
+```
+
+- `on=` receives a list of columns by which we will join the tables. This will result in a **_primary composite key_** for the resulting table.
+- `how=` specifies the type of `JOIN` to execute.
+
+When we run either `show()` or `write()` on this query, Spark will have to create both the temporary dataframes and the join final dataframe. The DAG will look like this:
+
+![spark-dag-join](./images/spark-dag-join.png)
+
+Stages 1 and 2 belong to the creation of `df_green_revenue_tmp` and `df_yellow_revenue_tmp`.
+
+For stage 3, given all records for yellow taxis `Y1, Y2, ... , Yn` and for green taxis `G1, G2, ... , Gn` and knowing that the resulting composite key is `key K = (hour H, zone Z)`, we can express the resulting complex records as `(Kn, Yn)` for yellow records and `(Kn, Gn)` for green records.
+
+Spark will first `shuffle` the data like it did for grouping (using the `external merge sort algorithm`) and then it will `reduce` the records by joining yellow and green data for matching keys to show the final output.
+
+![spark-join](./images/spark-join.png)
+
+- Because we're doing an **_outer join_**, keys which only have yellow taxi or green taxi records will be shown with empty fields for the missing data, whereas keys with both types of records will show both yellow and green taxi data.
+  - If we did an **_inner join_** instead, the records such as `(K1, Y1, Ø)` and `(K4, Ø, G3)` would be excluded from the final result.
+
+### Joining a large table and a small table
+
+> Note: this section assumes that you have run the code in [the test Jupyter Notebook](../5_batch_processing/03_test.ipynb) from the [Installing spark section](#installing-spark) and therefore have created a `zones` dataframe.
+
+Let's now use the `zones` lookup table to match each zone ID to its corresponding name.
+
+```python
+df_zones = spark.read.parquet('zones/')
+
+df_result = df_join.join(df_zones, df_join.zone == df_zones.LocationID)
+
+df_result.drop('LocationID', 'zone').write.parquet('../../../data/tmp/revenue-zones')
+```
+
+- The default join type in Spark SQL is the inner join.
+- Because we renamed the `LocationID` in the joint table to `zone`, we can't simply specify the columns to join and we need to provide a condition as criteria.
+- We use the `drop()` method to get rid of the extra columns we don't need anymore, because we only want to keep the zone names and both `LocationID` and `zone` are duplicate columns with numeral ID's only.
+- We also use `write()` instead of `show()` because `show()` might not process all of the data.
+
+The `zones` table is actually very small and joining both tables with merge sort is unnecessary. What Spark does instead is `broadcasting`:
+
+- Spark sends a `copy` of the small table ('zones' table in this EX) to all of the executors.
+- Each executor then joins each partition of the big table in memory by performing a lookup on the local broadcasted table.
+
+![spark-join-big-vs-small-tables](./images/spark-join-big-vs-small-tables.png)
+
+Reshuffling isn't needed because each executor already has all of the necessary info to perform the join on each partition, thus speeding up the join operation by orders of magnitude. Because there is no reshuffling, there is just 1 stage => it's much faster.
