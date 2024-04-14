@@ -42,6 +42,7 @@
   - [Joining a large table and a small table](#joining-a-large-table-and-a-small-table)
 - [DE Zoomcamp 5.5.1 - (Optional) Operations on Spark RDDs](#de-zoomcamp-551---optional-operations-on-spark-rdds)
 - [DE Zoomcamp 5.5.2 - (Optional) Spark RDD mapPartition](#de-zoomcamp-552---optional-spark-rdd-mappartition)
+- [DE Zoomcamp 5.6.1 - Connecting to Google Cloud Storage](#de-zoomcamp-561---connecting-to-google-cloud-storage)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -1104,3 +1105,94 @@ df_predicts.select('predicted_duration').show()
 - We drop the `Index` field because it was created by Spark and it is not needed.
 
 As a final thought, you may have noticed that the `apply_model_in_batch()` method does NOT operate on single elements, but rather it takes the whole partition and does something with it (in our case, calling a ML model). If you need to operate on individual elements then you're better off with `map()`.
+
+# [DE Zoomcamp 5.6.1 - Connecting to Google Cloud Storage](https://www.youtube.com/watch?v=Yyz293hBVcQ&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=63)
+
+So far we've seen how to run Spark locally and how to work with local data. In this section we will cover how to use Spark with remote data and run Spark in the cloud as well.
+
+Google Cloud Storage is an _object store_, which means that it doesn't offer a fully featured file system. Spark can connect to remote object stores by using **_connectors_**; each object store has its own connector, so we will need to use [Google's Cloud Storage Connector](https://cloud.google.com/dataproc/docs/concepts/connectors/cloud-storage) if we want our local Spark instance to connect to our Data Lake.
+
+Before we do that, we will use `gsutil` to upload our local files to our Data Lake. `gsutil` is included with the GCP SDK, so you should already have it if you've followed the previous chapters.
+
+### Uploading files to Cloud Storage with `gsutil`
+
+Assuming you've got a bunch of parquet files you'd like to upload to Cloud Storage, run the following command to upload them:
+
+```bash
+gsutil -m cp -r <local_folder> gs://<bucket_name/destination_folder>
+
+gsutil -m cp -r data/pg/ gs://dtc_data_lake_hpham-dtc-de/pg
+```
+
+- The `-m` option is for enabling multithreaded upload in order to speed it up.
+- `cp` is for copying files.
+- `-r` stands for _recursive_; it's used to state that the contents of the local folder are to be uploaded. For single files this option isn't needed.
+
+### Configuring Spark with the GCS connector
+
+1. **_IMPORTANT:_** Download the [Cloud Storage connector for Hadoop](https://cloud.google.com/dataproc/docs/concepts/connectors/cloud-storage). As the name implies, this `.jar` file is what essentially connects PySpark with GCS. The version tested for this lesson is version 2.2.21 for Hadoop 3; create a `lib` folder in your work directory and run the following command from it:
+
+   ```bash
+   gsutil cp gs://hadoop-lib/gcs/gcs-connector-hadoop3-2.2.21.jar gcs-connector-hadoop3-2.2.21.jar
+   ```
+
+   This will download the connector to the local folder.
+
+2. Move the `.jar` file to your Spark file directory. I installed Spark using homebrew on Mac => I had to create a `/jars` directory under directory "/usr/local/Cellar/apache-spark/3.5.0"
+
+3. We now need to follow a few extra steps before creating the Spark session in our notebook. Import the following libraries:
+
+   ```python
+   import pyspark
+   from pyspark.sql import SparkSession
+   from pyspark.conf import SparkConf
+   from pyspark.context import SparkContext
+   ```
+
+   Now we need to configure Spark by creating a configuration object. Run the following code to create it:
+
+   ```python
+    credentials_location = '/Users/hoang.hai.pham/.google/credentials/google_credentials.json'
+
+    conf = SparkConf() \
+      .setMaster('local[*]') \
+      .setAppName('test') \
+      .set("spark.jars", "/usr/local/Cellar/apache-spark/3.5.0/jars/gcs-connector-hadoop3-2.2.21.jar") \
+      .set("spark.hadoop.google.cloud.auth.service.account.enable","true") \
+      .set("spark.hadoop.google.cloud.auth.service.account.json.keyfile", credentials_location)
+   ```
+
+   You may have noticed that we're including a couple of options that we previously used when creating a Spark Session with its builder. That's because we implicitly created a **_context_**, which represents a connection to a spark cluster. This time we need to explicitly create and configure the context like so:
+
+   ```python
+   sc = SparkContext(conf=conf)
+
+   hadoop_conf = sc._jsc.hadoopConfiguration()
+
+   hadoop_conf.set("fs.AbstractFileSystem.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS")
+   hadoop_conf.set("fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
+   hadoop_conf.set("fs.gs.auth.service.account.json.keyfile", credentials_location)
+   hadoop_conf.set("fs.gs.auth.service.account.enable", "true")
+   ```
+
+   What is this doing? When you see a `fs (file system)` that starts with `gs (google cloud)` -> then we need to use those implementations, which is comming from `.jar` file, and need to be used the credentials.
+
+   This will likely output a warning when running the code. You may ignore it.
+
+   We can now finally instantiate a Spark session:
+
+   ```python
+   spark = SparkSession.builder \
+       .config(conf=sc.getConf()) \
+       .getOrCreate()
+   ```
+
+### Reading the remote data
+
+In order to read the parquet files stored in the Data Lake, you simply use the bucket URI as a parameter, like so:
+
+```python
+df_green = spark.read.parquet('gs://dtc_data_lake_hpham-dtc-de/pg/green/2020/01/part-00000-fc72b89e-f8fc-4908-9c19-50a5c59c6a30-c000.snappy.parquet')
+```
+
+You may now work with the `df_green` dataframe normally.
