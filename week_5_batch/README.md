@@ -47,6 +47,10 @@
   - [Spark standalone master and workers](#spark-standalone-master-and-workers)
   - [Parametrizing our scripts for Spark](#parametrizing-our-scripts-for-spark)
   - [Submitting Spark jobs with Spark submit](#submitting-spark-jobs-with-spark-submit)
+- [DE Zoomcamp 5.6.3 - Setting up a Dataproc Cluster](#de-zoomcamp-563---setting-up-a-dataproc-cluster)
+  - [Creating the cluster](#creating-the-cluster)
+  - [Running a job with the web UI](#running-a-job-with-the-web-ui)
+  - [Running a job with the gcloud SDK](#running-a-job-with-the-gcloud-sdk)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -1353,3 +1357,108 @@ spark = SparkSession.builder \
 You may find more sophisticated uses of `spark-submit` in the [official documentation](https://spark.apache.org/docs/latest/submitting-applications.html).
 
 After you're done running Spark in standalone mode, you will need to manually shut it down. Simply run the `./sbin/stop-worker.sh` (`./sbin/stop-slave.sh` in older Spark versions) and `./sbin/stop-master.sh` scripts to shut down Spark.
+
+# [DE Zoomcamp 5.6.3 - Setting up a Dataproc Cluster](https://www.youtube.com/watch?v=osAiAYahvh8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=65)
+
+In this section, we will see:
+
+- How to create a cluster on GCP.
+- How to run a spark job with Dataproc.
+- Doing something similar to spark-submit using cloud sdk to submit a job to Dataproc.
+
+### Creating the cluster
+
+[Dataproc](https://cloud.google.com/dataproc) is Google's cloud-managed service for running Spark and other data processing tools such as Flink, Presto, etc.
+
+You may access Dataproc from the GCP dashboard and typing `dataproc` on the search bar. The first time you access it you will have to enable the API (https://console.cloud.google.com/apis/library/dataproc.googleapis.com?hl=en&project=hpham-dtc-de)
+(https://console.cloud.google.com/apis/library/cloudresourcemanager.googleapis.com?project=hpham-dtc-de).
+
+In the images below you may find some example values for creating a simple cluster. Give it a name of your choosing and choose the same region as your bucket.
+
+![dataproc-create-step1](./images/dataproc-create-step1.png)
+
+We would normally choose a `standard` cluster, but you may choose `single node` if you just want to experiment and not run any jobs.
+
+![dataproc-create-step2](./images/dataproc-create-step2.png)
+
+Optionally, you may install additional components but we won't be covering them in this lesson. Untick Internal IP Only.
+
+![dataproc-create-step3](./images/dataproc-create-step3.png)
+
+You may leave all other optional settings with their default values. After you click on `Create`, it will take a few seconds to create the cluster. You may notice an extra VM instance under VMs; that's the Spark instance.
+
+### Running a job with the web UI
+
+In a [DE Zoomcamp 5.6.1 - Connecting to Google Cloud Storage](#de-zoomcamp-561---connecting-to-google-cloud-storage) we saw how to connect Spark to our bucket in GCP. However, in Dataproc we don't need to specify this connection because it's already pre-comfigured for us. We will also submit jobs using a menu, following similar principles to what we saw in the previous section.
+
+In Dataproc's _Clusters_ page, choose your cluster and un the _Cluster details_ page, click on `Submit job`. Under _Job type_ choose `PySpark`, then in _Main Python file_ write the path to your script (you may upload the script to your bucket and then copy the URL).
+
+Make sure that your script does not specify the `master` cluster! Your script should take the connection details from Dataproc; make sure it looks something like this:
+
+```python
+spark = SparkSession.builder \
+    .appName('test') \
+    .getOrCreate()
+```
+
+You may use [11_spark_cluster_sql.py](./code/11_spark_cluster_sql.py) for testing. We need to upload this script to GCP bucket under folder named `code`.
+
+> gsutil cp 11_spark_cluster_sql.py gs://dtc_data_lake_hpham-dtc-de/code/11_spark_cluster_sql.py
+
+We also need to specify arguments, in a similar fashion to what we saw [Parametrizing our scripts for Spark](#parametrizing-our-scripts-for-spark), but using the URL's for our folders rather than the local paths in the `Arguments` filed:
+
+```bash
+--input_green=gs://dtc_data_lake_hpham-dtc-de/pg/green/2021/*/
+--input_yellow=gs://dtc_data_lake_hpham-dtc-de/pg/yellow/2021/*/
+--output=gs://dtc_data_lake_hpham-dtc-de/report/report-2021
+```
+
+![dataproc-submit-job](./images/dataproc-submit-job.png)
+
+Now press `Submit`. Sadly there is no easy way to access the Spark dashboard but you can check the status of the job from the `Job details` page. Double-check again with the Storage Bucket to see if report folder is there.
+
+![dataproc-job-submit-success](./images/dataproc-job-submit-success.png)
+
+### Running a job with the gcloud SDK
+
+Besides the web UI, there are additional ways to run a job, listed [in this link](https://cloud.google.com/dataproc/docs/guides/submit-job) in order to executed the job via Airflow, Terminal, etc. We will focus on the `gcloud SDK` now.
+
+Before you can submit jobs with the SDK, you will need to grant permissions to the Service Account we've been using so far. Go to _IAM & Admin_ and edit your Service Account so that the `Dataproc Administrator` role is added to it.
+
+We can now submit a job from the command line, like this:
+
+```bash
+gcloud dataproc jobs submit pyspark \
+  --cluster=<your-cluster-name> \
+  --region=europe-west6 \
+  gs://<url-of-your-script> \
+  -- \
+    --param1=<your-param-value> \
+    --param2=<your-param-value>
+```
+
+**_NOTE:_**
+
+- Change to `bash` instead of `zsh` in order to execute the following commands in command line.
+  - On MAC & VSCode => ⌘ + Shift + P Type "Terminal: Select Default Profile", and select it => Select "bash".
+  - On Terminal:
+    - For bash
+      > exec bash
+    - For zsh
+      > exec zsh
+- If there is `ERROR: (gcloud.dataproc.jobs.submit.pyspark) The required property [project] is not currently set` -> Run command
+  > gcloud config set project {VALUE} \
+  > gcloud config set project hpham-dtc-de
+
+```bash
+gcloud dataproc jobs submit pyspark \
+  --cluster=de-zoomcamp-cluster \
+  --region=europe-west3 \
+  gs://dtc_data_lake_hpham-dtc-de/code/11_spark_cluster_sql.py \
+  -- \
+    --input_green=gs://dtc_data_lake_hpham-dtc-de/pg/green/2020/*/ \
+    --input_yellow=gs://dtc_data_lake_hpham-dtc-de/pg/yellow/2020/*/ \
+    --output=gs://dtc_data_lake_hpham-dtc-de/report/report-2020
+```
+
+You may find more details on how to run jobs [in the official docs](https://cloud.google.com/dataproc/docs/guides/submit-job).
