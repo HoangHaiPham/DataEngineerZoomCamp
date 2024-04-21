@@ -51,6 +51,7 @@
   - [Creating the cluster](#creating-the-cluster)
   - [Running a job with the web UI](#running-a-job-with-the-web-ui)
   - [Running a job with the gcloud SDK](#running-a-job-with-the-gcloud-sdk)
+- [DE Zoomcamp 5.6.4 - Connecting Spark to Big Query](#de-zoomcamp-564---connecting-spark-to-big-query)
 
 # [DE Zoomcamp 5.1.1 - Introduction to Batch processing](https://www.youtube.com/watch?v=dcHe5Fl3MF8&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=48)
 
@@ -1462,3 +1463,61 @@ gcloud dataproc jobs submit pyspark \
 ```
 
 You may find more details on how to run jobs [in the official docs](https://cloud.google.com/dataproc/docs/guides/submit-job).
+
+# [DE Zoomcamp 5.6.4 - Connecting Spark to Big Query](https://www.youtube.com/watch?v=HIm2BOj8C0Q&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=66)
+
+In this lesson, we will know how to connect Dataproc with BigQuery. In previous lesson, we saw how can we create spark cluster with Google Cloud platform wiht Dataproc. We were able to create a cluster, submit a job & see the results in Google Cloud Storage. However, it's not always convenient, sometimes we want to write directly to bigquery (our datawarehouse) => This is the scope of this section. Reference https://cloud.google.com/dataproc/docs/tutorials/bigquery-connector-spark-example#pyspark
+
+Modify the script [11_spark_cluster_sql.py](./code/11_spark_cluster_sql.py) to [12_spark_cluster_sql_big_query.py](./code/12_spark_cluster_sql_big_query.py). Instead of writing data into parquet files and save in Google Cloud Storage, now we can save it directly to BigQuery.
+
+Moreover, when we create a cluster, it also creates 2 buckets:
+
+- Temporary bucket. In the experience, the temporary bucket will be `dataproc-temp-europe-west3-262435197234-hgf0znnq`
+- Staging bucket. In the experience, the staging bucket will be `dataproc-staging-europe-west3-262435197234-rys84kdm`
+
+```python
+spark = SparkSession.builder \
+    .appName("test") \
+    .getOrCreate()
+
+bucket = "dataproc-temp-europe-west3-262435197234-hgf0znnq"
+spark.conf.set('temporaryGcsBucket', bucket)
+
+...
+
+df_result.write.format('bigquery') \
+  .option('table', output) \
+  .mode('overwrite') \
+  .save()
+```
+
+Upload this script to Google Cloud Storage by using command:
+
+> gsutil cp 12_spark_cluster_sql_big_query.py gs://dtc_data_lake_hpham-dtc-de/code/12_spark_cluster_sql_big_query.py
+
+Change the `output` to the `schema.table-name`. Then execute this in `bash` command line to run spark
+
+```bash
+gcloud dataproc jobs submit pyspark \
+  --cluster=de-zoomcamp-cluster \
+  --region=europe-west3 \
+  gs://dtc_data_lake_hpham-dtc-de/code/12_spark_cluster_sql_big_query.py \
+  -- \
+    --input_green=gs://dtc_data_lake_hpham-dtc-de/pg/green/2020/*/ \
+    --input_yellow=gs://dtc_data_lake_hpham-dtc-de/pg/yellow/2020/*/ \
+    --output=trips_data_all.reports-2020
+```
+
+There will be an error displays because of the missing of `jars` file. Then we have to add `--jars=gs://spark-lib/bigquery/spark-3.4-bigquery-0.37.0.jar` into the bash command (spark version 3.5.0, but don't know why --jars=gs://spark-lib/bigquery/spark-3.4-bigquery-0.37.0.jar doesn't work). More info about spark-bigquery-connector: https://github.com/GoogleCloudDataproc/spark-bigquery-connector?tab=readme-ov-file
+
+```bash
+gcloud dataproc jobs submit pyspark \
+  --cluster=de-zoomcamp-cluster \
+  --region=europe-west3 \
+  --jars=gs://spark-lib/bigquery/spark-3.4-bigquery-0.37.0.jar \
+  gs://dtc_data_lake_hpham-dtc-de/code/12_spark_cluster_sql_big_query.py \
+  -- \
+    --input_green=gs://dtc_data_lake_hpham-dtc-de/pg/green/2021/*/ \
+    --input_yellow=gs://dtc_data_lake_hpham-dtc-de/pg/yellow/2021/*/ \
+    --output=trips_data_all.reports-2021
+```
