@@ -25,6 +25,9 @@
     - [Create topic](#create-topic)
     - [Produce a message](#produce-a-message)
     - [Connectors](#connectors)
+- [DE Zoomcamp 6.13-Kafka Streaming with Python](#de-zoomcamp-613-kafka-streaming-with-python)
+  - [Json example](#json-example)
+  - [Avro example](#arvo-example)
 
 # [DE Zoomcamp 6.1-Introduction](https://www.youtube.com/watch?v=hfvju3iOIP0&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=67)
 
@@ -314,3 +317,80 @@ After a few minutes, the `Connector` is successfully create. We can go to the `T
 _**NOTE:**_ In order to save the credit, pause/turn off the `Connector` when not using.
 
 ![confluent-connector-pause](./images/confluent-connector-pause.png)
+
+# [DE Zoomcamp 6.4-Kafka producer consumer](https://www.youtube.com/watch?v=aegTuyxX7Yg&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=71)
+
+In this course, we will also programmatically consume data using Java as the programming language. Kafka libraries are well maintained for Java, while Python is not as well maintained currently.
+
+we will use the Confluent cloud. The first step is to create a topic for `rides data`. Click `Add topic` and configure as following:
+
+![confluent-java-topic-1](./images/confluent-java-topic-1.png)
+
+Next, we will connect it to a `client`. The `client` provides examples on how to do this, particularly in Java. We will follow the configuration instructions provided.
+
+Download the source code for [Java example with Kafka](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/06-streaming/java/kafka_examples_) and then follow along the tutorials for writing the Java code.
+
+# [DE Zoomcamp 6.13-Kafka Streaming with Python](https://www.youtube.com/watch?v=BgAlVknDFlQ&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=80)
+
+- [Json Producer-Consumer Example](./code/python/json_example/) using kafka-python library
+- [Avro Producer-Consumer Example](./code/python/avro_example) using confluent-kafka library
+
+In this session, demonstrating how to implement producer-consumer functionality using Python libraries and using Docker (instead of Confluent).
+
+Packages need to be installed:
+
+```bash
+pip3 install kafka-python confluent-kafka fastavro
+```
+
+Instead of setting up an extra Confluent cloud, we will be running Kafka-specific services in a Docker container. To get started, created a `Docker folder` which includes Kafka and Spark. For this tutorial, we only need Kafka and its services to be up and running.
+
+Let's take a look at the services in the [docker-compose.yml](./code/python/docker/docker-compose.yml) file and the configurations required in our system. There are:
+
+- `broker`: some parameters are important for us to understand such as: `KAFKA_LISTENERS`, `KAFKA_ADVERTISED_LISTENERS`, `KAFKA_INTER_BROKER_LISTENER_NAME`, `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP`. These parameters configure how kakfa communicate with the docker and how we can access broker outside of the docker. `PLAINTEXT` defines how Kafka communicate within inter-broker-listener using the port 29092 for inter-communication within the Kafka cluster. `PLAINTEXT_HOST` represents how we can access to the Kafka cluster from outside with port 9092. These parameters hold significant role and it is highly recommended to read and understand why we have two different definitions.
+- `schema-registry`
+- `zookeeper` -`control-center`
+- `kafka-rest`
+
+The first four services are necessary for running Kafka successfully, while `kafka-rest` is optional and allows us to communicate with the Kafka broker using the REST API. Is is useful when debugging messages or ensuring everything is functioning correctly, we may need to access it through the REST API. To get started, we just need to have the specific network configuration in place. Normally, we don't need to have a specific network for this.
+
+However, let's focus on creating the network because this network is necessary for the upcoming tutorials where we will be working with Spark and Kafka.
+
+```bash
+# Create Network
+docker network create kafka-spark-network
+
+# List all Networks
+docker network ls
+
+# Run docker container
+docker-compose up -d
+
+# Run producer.py
+python3 producer.py
+
+# Run consumer.py
+python3 consumer.py
+```
+
+If you have not, this is the only package you need to install in your virtual environment for this Redpanda lesson.
+
+### Json example
+
+Let's delve into the `json_example`. The objective is to read a CSV file from our local machine, specifically the `rides.csv` file located in the `resources folder`.
+
+We will create a `producer` and publish each row of the CSV file to a specific topic using the Kafka producer. The `BOOTSTRAP_SERVER` should be set as localhost 9092, which is available since we subscribed to it as a local host in our Docker. Additionally, we need to specify how we want to format the customers' data. For instance, we convert the `key` to an string value, then encode it because the Kafka topic expects messages in binary format. To handle this encoding and conversion of our message `value` to the correct format for Kafka, we needed to encode and convert our object as a dictionary into a string first, and then convert it to binary. We must keep in mind the serialisation process because we will need to reverse it in the same order. We also perform customer key serialisation and value serialisation.
+
+`consumer` consumes from a specific set of `KAFKA_TOPIC`, which is the same one that has been used in producer. `auto_offset_reset` defines how consumer will read the topic (earliest/latest). `key_deserializer` and `value_deserializer` are used to decode the binary format to human-readable format since Kafka stores data in binary format.
+
+### Why do we need to define schema?
+
+These messages are defined and formatted in an adjacent manner. The only requirement is that we ensure proper serialisation and deserialization work together. However, in this particular setup, we do not have a specific schema defined. For instance, if the producer, decide to pass data but make changes to the format, such as altering the JSON structure or removing certain identifiers, it will still be printed out in the same way without any issues. This is because we did not specify a schema for validation.
+
+It is crucial for these systems to trust the messages we send out, which is why specifying schemas and using our concept while working with Kafka streaming is essential. Otherwise, this may lead to issues, especially when dealing with production systems. We aim to ensure that our classes and messages are consistent and backward compatible to avoid disrupting any downstream systems that rely on our messages.
+
+### Arvo example
+
+The steps to perform experience are the same in `Json example`. The main difference is using AvroSerializer class, then we don't need to worry about the expected format that Kafka requires.
+
+The contrast between this Json and our example lies in the way we define serialisation and deserialisation, as well as the level of serialisation required in our codebase. This distinction ensures the contract between various services. For instance, if your team is responsible for constructing the messages, while another team is tasked with receiving and interpreting these messages as a consumer.
