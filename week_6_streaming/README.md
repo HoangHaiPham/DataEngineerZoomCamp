@@ -394,3 +394,63 @@ It is crucial for these systems to trust the messages we send out, which is why 
 The steps to perform experience are the same in `Json example`. The main difference is using AvroSerializer class, then we don't need to worry about the expected format that Kafka requires.
 
 The contrast between this Json and our example lies in the way we define serialisation and deserialisation, as well as the level of serialisation required in our codebase. This distinction ensures the contract between various services. For instance, if your team is responsible for constructing the messages, while another team is tasked with receiving and interpreting these messages as a consumer.
+
+# [DE Zoomcamp 6.14-Pyspark Structured Streaming](https://www.youtube.com/watch?v=VIVr7KwRQmE&list=PL3MmuxUbc_hJed7dXYoJw8DoCuVHhGEQb&index=80)
+
+In this session, we'll be diving into Spark structure streaming and how we can connect with both Kafka and Spark clusters.
+
+Similar to what we did before, we'll be creating traffic services. Additionally, make sure to check the [README file](./code/python/docker/README.md) for specific steps, especially regarding Spark and some necessary images. Execute the first & second steps to set up the network.
+
+First, check the network by using command `docker network ls`, there will be `kafka-spark-network`, which we created in last section, allows communication between Kafka and Spark services. Then, we have the product distributed file system, acting as a replication of HDFS to store logs and messages called `hadoop-distributed-file-system` (using command `docker volume ls` for checking). This is crucial for our cluster. To check all the images, use command `docker image ls`.
+
+- Inside folder [kafka](./code/python/docker/kafka/), run command `docker-compose up -d`.
+- Inside folder [spark](./code/python/docker/spark/), run command `docker-compose up -d`.
+
+Create folder [streams-example](./code/python/streams-example/streams-example/) and create 2 sub-folders named `pyspark` and `faust`.
+
+### Testing with pyspark
+
+Make sure to run both docker-compose in `docker/kafka` & `docker/spark` folders. Then execute those command for checking in `pyspark` folder:
+
+```bash
+# Run producer
+python3 producer.py
+
+# Run consumer with default settings
+python3 consumer.py
+```
+
+### Running Pyspark & Kafka
+
+The script can be found at [streaming-notebook.ipynb](./code/python/streams-example/pyspark/streaming-notebook.ipynb). There will be a folder checkpoint be created to store logs value.
+
+[streaming.py](./code/python/streams-example/pyspark/streaming.py) cannot be run by using command `python3 streaming.py` due to the unmatch of "Structure Streaming". Therefore there will be a `spark-submit.sh` which contains several important parameters in order to communicate with Kafka, schema registry access. Execute the folling steps to successfully run the `streaming.py`:
+
+1. Open the first terminal in [docker/kafka](./code/python/docker/kafka/) and run `docker compose up -d`.
+2. Open the second terminal in [docker/spark](./code/python/docker/spark/) and run
+   - ./build.sh
+   - docker compose up -d
+3. Open the third terminal in [streams-example/pyspark](./code/python/streams-example/pyspark/) and run `./spark-submit.sh streaming.py`.
+4. Open the third terminal in [streams-example/pyspark](./code/python/streams-example/pyspark/) and run `python3 producer.py`
+
+### Python Kafka: ./spark-submit.sh streaming.py - ERROR StandaloneSchedulerBackend: Application has been killed. Reason: All masters are unresponsive! Giving up.
+
+The reason for the failed connection in my case was the mismatch of PySpark versions. You can see that from the logs of spark-master in the docker container.
+
+- **Solution 1**: Downgrade your local PySpark to 3.3.1 (same as [docker/spark/build.sh](./code/python/docker/spark/build.sh), [docker/spark/jupyterlab.Dockerfile](./code/python/docker/spark/jupyterlab.Dockerfile) and [docker/spark/spark-base.Dockerfile](./code/python/docker/spark/spark-base.Dockerfile)).
+
+- **Solution 2**: Check what Spark version your local machine has by using command
+
+  > spark-submit –version
+
+  Add your version to `SPARK_VERSION` in [docker/spark/build.sh](./code/python/docker/spark/build.sh) (EX: SPARK_VERSION="3.5.0").
+
+### Python Kafka: ./spark-submit.sh streaming.py - How to check why Spark master connection fails
+
+- Start a new terminal
+- Run: docker ps
+- Copy the CONTAINER ID of the spark-master container
+- Run: docker exec -it <spark_master_container_id> bash
+- Run: cat logs/spark-master.out
+- Check for the log when the error happened
+- Google the error message from there
