@@ -1,3 +1,5 @@
+# To further develop my practical skills in data engineering, I actively participated in this comprehensive Data Engineering Zoomcamp. This program, offered by DataTalksClub (https://github.com/DataTalksClub/data-engineering-zoomcamp) and shared-notes by Ziritrion (https://github.com/ziritrion/dataeng-zoomcamp), focused on building a real-world data pipeline.
+
 # [Data Engineer ZoomCamp](https://github.com/DataTalksClub/data-engineering-zoomcamp)
 
 ### Course UI
