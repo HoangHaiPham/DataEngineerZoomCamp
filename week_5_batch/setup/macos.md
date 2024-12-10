@@ -15,7 +15,7 @@ brew install openjdk@11
 Add the following environment variables to your `.bash_profile` or `.zshrc`:
 
 ```bash
-export JAVA_HOME="/usr/local/Cellar/openjdk@11/11.0.22"
+export JAVA_HOME="/usr/local/Cellar/openjdk@11/11.0.25"
 export PATH="${JAVA_HOME}/bin/:${PATH}"
 ```
 
@@ -26,7 +26,7 @@ Make sure Java was installed to `/usr/local/Cellar/openjdk@11/11.0.22`: Open Fin
 1. Install Scala
 
 ```bash
-brew install scala
+brew install scala@2.12
 ```
 
 2. Install Apache Spark
@@ -40,7 +40,7 @@ brew install apache-spark
 Add the following environment variables to your `.bash_profile` or `.zshrc`. Replace the path to `SPARK_HOME` to the path on your own host. Run `brew info apache-spark` to get this.
 
 ```bash
-export SPARK_HOME="/usr/local/Cellar/apache-spark/3.5.0/libexec"
+export SPARK_HOME="/usr/local/Cellar/apache-spark/3.5.3/libexec"
 export PATH="${SPARK_HOME}/bin/:${PATH}"
 ```
 

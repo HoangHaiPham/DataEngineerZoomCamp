@@ -159,10 +159,10 @@ nano ~/.bash_profile
 export GOOGLE_APPLICATION_CREDENTIALS="${HOME}/.google/credentials/google_credentials.json"
 export PATH="${HOME}/bin:${PATH}"
 
-export JAVA_HOME="/usr/local/Cellar/openjdk@11/11.0.22"
+export JAVA_HOME="/usr/local/Cellar/openjdk@11/11.0.25"
 export PATH="${JAVA_HOME}/bin/:${PATH}"
 
-export SPARK_HOME="/usr/local/Cellar/apache-spark/3.5.0/libexec"
+export SPARK_HOME="/usr/local/Cellar/apache-spark/3.5.3/libexec"
 export PATH="${SPARK_HOME}/bin/:${PATH}"
 
 export PYTHONPATH="${SPARK_HOME}/python/:$PYTHONPATH"
